@@ -34,7 +34,8 @@ describe('processAudioToMp3', () => {
     const job = {
       data: {
         inputPath,
-        outputPath
+        outputPath,
+        quality: 2
       }
     } as Job<AudioToMp3JobData>;
 
@@ -56,7 +57,8 @@ describe('processAudioToMp3', () => {
     const job = {
       data: {
         inputPath,
-        outputPath
+        outputPath,
+        quality: 2
       }
     } as Job<AudioToMp3JobData>;
 
@@ -76,7 +78,8 @@ describe('processAudioToMp3', () => {
     const job = {
       data: {
         inputPath,
-        outputPath
+        outputPath,
+        quality: 2
       }
     } as Job<AudioToMp3JobData>;
 
@@ -84,6 +87,31 @@ describe('processAudioToMp3', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
+  });
+
+  it('should convert WAV to MP3 with custom quality', async () => {
+    const inputPath = path.join(FIXTURES_DIR, 'test-audio-quality.wav');
+    const outputPath = path.join(TEST_DIR, 'output-quality7.mp3');
+
+    createTestWavFile(inputPath);
+
+    const job = {
+      data: {
+        inputPath,
+        outputPath,
+        quality: 7
+      }
+    } as Job<AudioToMp3JobData>;
+
+    const result = await processAudioToMp3(job);
+
+    expect(result.success).toBe(true);
+    expect(result.outputPath).toBe(outputPath);
+    expect(existsSync(outputPath)).toBe(true);
+
+    const fileInfo = execSync(`ffprobe -v error -show_format -of json "${outputPath}"`).toString();
+    const metadata = JSON.parse(fileInfo);
+    expect(metadata.format.format_name).toContain('mp3');
   });
 });
 

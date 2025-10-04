@@ -12,7 +12,7 @@ const execFileAsync = promisify(execFile);
 const PROCESSING_TIMEOUT = 600000;
 
 export async function processAudioToMp3(job: Job<AudioToMp3JobData>): Promise<JobResult> {
-  const { inputPath, outputPath } = job.data;
+  const { inputPath, outputPath, quality } = job.data;
 
   if (!existsSync(inputPath)) {
     return {
@@ -31,7 +31,7 @@ export async function processAudioToMp3(job: Job<AudioToMp3JobData>): Promise<Jo
       '-codec:a',
       'libmp3lame',
       '-qscale:a',
-      '2',
+      quality.toString(),
       '-y',
       outputPath
     ], { timeout: PROCESSING_TIMEOUT });
