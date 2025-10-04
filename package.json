@@ -3,8 +3,12 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "esbuild src/server.ts --bundle --sourcemap --platform=node --loader:.node=file --outfile=dist/server.js",
+    "dev:worker": "tsx watch src/worker.ts",
+    "build": "npm run build:server && npm run build:worker",
+    "build:server": "esbuild src/server.ts --bundle --sourcemap --platform=node --loader:.node=file --outfile=dist/server.js",
+    "build:worker": "esbuild src/worker.ts --bundle --sourcemap --platform=node --loader:.node=file --outfile=dist/worker.js",
     "start": "node ./dist/server.js",
+    "start:worker": "node ./dist/worker.js",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write ."
   },
@@ -13,7 +17,10 @@
     "@hono/zod-openapi": "^1.1.3",
     "@scalar/hono-api-reference": "^0.9.20",
     "@scalar/openapi-to-markdown": "^0.2.43",
+    "bullmq": "^5.60.0",
+    "dotenv": "^17.2.3",
     "hono": "^4.9.9",
+    "ioredis": "^5.8.0",
     "zod": "^4.1.11"
   },
   "devDependencies": {
