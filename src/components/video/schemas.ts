@@ -21,7 +21,9 @@ export const videoToMp4Route = createRoute({
     body: {
       content: {
         'multipart/form-data': {
-          schema: FileSchema
+          schema: z.object({
+            file: FileSchema
+          })
         }
       },
       required: true
@@ -77,7 +79,9 @@ export const extractAudioRoute = createRoute({
     body: {
       content: {
         'multipart/form-data': {
-          schema: FileSchema
+          schema: z.object({
+            file: FileSchema
+          })
         }
       },
       required: true
@@ -132,7 +136,9 @@ export const extractFramesRoute = createRoute({
     body: {
       content: {
         'multipart/form-data': {
-          schema: FileSchema
+          schema: z.object({
+            file: FileSchema
+          })
         }
       },
       required: true
