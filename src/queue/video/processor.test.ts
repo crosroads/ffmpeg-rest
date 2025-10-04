@@ -36,7 +36,8 @@ describe('processVideoToMp4', () => {
         inputPath,
         outputPath,
         crf: 23,
-        preset: 'medium' as const
+        preset: 'medium' as const,
+        smartCopy: true
       }
     } as Job<VideoToMp4JobData>;
 
@@ -60,7 +61,8 @@ describe('processVideoToMp4', () => {
         inputPath,
         outputPath,
         crf: 23,
-        preset: 'medium' as const
+        preset: 'medium' as const,
+        smartCopy: true
       }
     } as Job<VideoToMp4JobData>;
 
@@ -82,7 +84,8 @@ describe('processVideoToMp4', () => {
         inputPath,
         outputPath,
         crf: 23,
-        preset: 'medium' as const
+        preset: 'medium' as const,
+        smartCopy: true
       }
     } as Job<VideoToMp4JobData>;
 
@@ -103,7 +106,35 @@ describe('processVideoToMp4', () => {
         inputPath,
         outputPath,
         crf: 28,
-        preset: 'fast' as const
+        preset: 'fast' as const,
+        smartCopy: true
+      }
+    } as Job<VideoToMp4JobData>;
+
+    const result = await processVideoToMp4(job);
+
+    expect(result.success).toBe(true);
+    expect(result.outputPath).toBe(outputPath);
+    expect(existsSync(outputPath)).toBe(true);
+
+    const fileInfo = execSync(`ffprobe -v error -show_format -of json "${outputPath}"`).toString();
+    const metadata = JSON.parse(fileInfo);
+    expect(metadata.format.format_name).toContain('mp4');
+  });
+
+  it('should use stream copy for compatible H264+AAC MP4 files', async () => {
+    const inputPath = path.join(FIXTURES_DIR, 'test-h264-aac.mp4');
+    const outputPath = path.join(TEST_DIR, 'output-copy.mp4');
+
+    createTestMp4File(inputPath);
+
+    const job = {
+      data: {
+        inputPath,
+        outputPath,
+        crf: 23,
+        preset: 'medium' as const,
+        smartCopy: true
       }
     } as Job<VideoToMp4JobData>;
 
@@ -122,6 +153,13 @@ describe('processVideoToMp4', () => {
 function createTestAviFile(outputPath: string): void {
   execSync(
     `ffmpeg -f lavfi -i testsrc=duration=2:size=320x240:rate=30 -f lavfi -i sine=frequency=1000:duration=2:sample_rate=44100 -ac 2 -pix_fmt yuv420p -y "${outputPath}"`,
+    { stdio: 'pipe' }
+  );
+}
+
+function createTestMp4File(outputPath: string): void {
+  execSync(
+    `ffmpeg -f lavfi -i testsrc=duration=2:size=320x240:rate=30 -f lavfi -i sine=frequency=1000:duration=2:sample_rate=44100 -c:v libx264 -c:a aac -pix_fmt yuv420p -y "${outputPath}"`,
     { stdio: 'pipe' }
   );
 }
