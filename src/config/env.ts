@@ -14,7 +14,23 @@ const schema = z.object({
   TEMP_DIR: z.string().default('/tmp/ffmpeg-rest'),
   MAX_FILE_SIZE: z.coerce.number().default(100 * 1024 * 1024),
 
-  WORKER_CONCURRENCY: z.coerce.number().default(5)
-});
+  WORKER_CONCURRENCY: z.coerce.number().default(5),
+
+  STORAGE_MODE: z.enum(['stateless', 's3']).default('stateless'),
+
+  S3_ENDPOINT: z.string().optional(),
+  S3_REGION: z.string().optional(),
+  S3_BUCKET: z.string().optional(),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_PUBLIC_URL: z.string().optional(),
+  S3_PATH_PREFIX: z.string().default('ffmpeg-rest')
+}).refine((data) => {
+  if (data.STORAGE_MODE === 's3') {
+    return !!(data.S3_ENDPOINT && data.S3_REGION && data.S3_BUCKET &&
+              data.S3_ACCESS_KEY_ID && data.S3_SECRET_ACCESS_KEY);
+  }
+  return true;
+}, { message: 'S3 configuration required when STORAGE_MODE=s3' });
 
 export const env = schema.parse(process.env);
