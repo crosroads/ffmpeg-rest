@@ -27,6 +27,12 @@ describe('processVideoToMp4', () => {
     }
   });
 
+  afterAll(() => {
+    if (existsSync(FIXTURES_DIR)) {
+      rmSync(FIXTURES_DIR, { recursive: true, force: true });
+    }
+  });
+
   it('should convert AVI to MP4 successfully', async () => {
     const inputPath = path.join(FIXTURES_DIR, 'test-video.avi');
     const outputPath = path.join(TEST_DIR, 'output.mp4');
@@ -179,6 +185,12 @@ describe('processVideoExtractFrames', () => {
   afterEach(() => {
     if (existsSync(TEST_DIR)) {
       rmSync(TEST_DIR, { recursive: true, force: true });
+    }
+  });
+
+  afterAll(() => {
+    if (existsSync(FIXTURES_DIR)) {
+      rmSync(FIXTURES_DIR, { recursive: true, force: true });
     }
   });
 
@@ -347,6 +359,12 @@ describe('processVideoExtractAudio', () => {
     }
   });
 
+  afterAll(() => {
+    if (existsSync(FIXTURES_DIR)) {
+      rmSync(FIXTURES_DIR, { recursive: true, force: true });
+    }
+  });
+
   it('should extract audio as mono by default', async () => {
     const inputPath = path.join(FIXTURES_DIR, 'test-video-audio.avi');
     const outputPath = path.join(TEST_DIR, 'audio.wav');
@@ -480,6 +498,9 @@ describe('Video Processors - S3 Mode', () => {
     await container?.stop();
     process.env = originalEnv;
     vi.resetModules();
+    if (existsSync(FIXTURES_DIR)) {
+      rmSync(FIXTURES_DIR, { recursive: true, force: true });
+    }
   });
 
   beforeEach(() => {

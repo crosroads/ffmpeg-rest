@@ -25,6 +25,12 @@ describe('processMediaProbe', () => {
     }
   });
 
+  afterAll(() => {
+    if (existsSync(FIXTURES_DIR)) {
+      rmSync(FIXTURES_DIR, { recursive: true, force: true });
+    }
+  });
+
   it('should probe video file and return metadata', async () => {
     const inputPath = path.join(FIXTURES_DIR, 'test-video-probe.avi');
 

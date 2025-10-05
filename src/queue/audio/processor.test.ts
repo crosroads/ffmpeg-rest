@@ -27,6 +27,12 @@ describe('processAudioToMp3', () => {
     }
   });
 
+  afterAll(() => {
+    if (existsSync(FIXTURES_DIR)) {
+      rmSync(FIXTURES_DIR, { recursive: true, force: true });
+    }
+  });
+
   it('should convert WAV to MP3 successfully', async () => {
     const inputPath = path.join(FIXTURES_DIR, 'test-audio.wav');
     const outputPath = path.join(TEST_DIR, 'output.mp3');
@@ -144,6 +150,12 @@ describe('processAudioToWav', () => {
   afterEach(() => {
     if (existsSync(TEST_DIR)) {
       rmSync(TEST_DIR, { recursive: true, force: true });
+    }
+  });
+
+  afterAll(() => {
+    if (existsSync(FIXTURES_DIR)) {
+      rmSync(FIXTURES_DIR, { recursive: true, force: true });
     }
   });
 
@@ -300,6 +312,9 @@ describe('Audio Processors - S3 Mode', () => {
     await container?.stop();
     process.env = originalEnv;
     vi.resetModules();
+    if (existsSync(FIXTURES_DIR)) {
+      rmSync(FIXTURES_DIR, { recursive: true, force: true });
+    }
   });
 
   beforeEach(() => {

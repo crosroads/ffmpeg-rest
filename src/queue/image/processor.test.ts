@@ -27,6 +27,12 @@ describe('processImageToJpg', () => {
     }
   });
 
+  afterAll(() => {
+    if (existsSync(FIXTURES_DIR)) {
+      rmSync(FIXTURES_DIR, { recursive: true, force: true });
+    }
+  });
+
   it('should convert PNG to JPG successfully', async () => {
     const inputPath = path.join(FIXTURES_DIR, 'test-image.png');
     const outputPath = path.join(TEST_DIR, 'output.jpg');
@@ -161,6 +167,9 @@ describe('Image Processors - S3 Mode', () => {
     await container?.stop();
     process.env = originalEnv;
     vi.resetModules();
+    if (existsSync(FIXTURES_DIR)) {
+      rmSync(FIXTURES_DIR, { recursive: true, force: true });
+    }
   });
 
   beforeEach(() => {
