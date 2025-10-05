@@ -25,12 +25,6 @@ const schema = z.object({
   S3_SECRET_ACCESS_KEY: z.string().optional(),
   S3_PUBLIC_URL: z.string().optional(),
   S3_PATH_PREFIX: z.string().default('ffmpeg-rest')
-}).refine((data) => {
-  if (data.STORAGE_MODE === 's3') {
-    return !!(data.S3_ENDPOINT && data.S3_REGION && data.S3_BUCKET &&
-              data.S3_ACCESS_KEY_ID && data.S3_SECRET_ACCESS_KEY);
-  }
-  return true;
-}, { message: 'S3 configuration required when STORAGE_MODE=s3' });
+});
 
 export const env = schema.parse(process.env);
