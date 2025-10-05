@@ -4,6 +4,8 @@ import { z } from '@hono/zod-openapi';
  * Common file upload schema
  */
 export const FileSchema = z.file().openapi({
+  type: 'string',
+  format: 'binary',
   description: 'Media file to process'
 });
 
