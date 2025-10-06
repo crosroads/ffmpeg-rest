@@ -301,6 +301,7 @@ describe('Audio Processors - S3 Mode', () => {
     process.env['S3_ACCESS_KEY_ID'] = 'test';
     process.env['S3_SECRET_ACCESS_KEY'] = 'test';
     process.env['S3_PATH_PREFIX'] = 'test-audio';
+    process.env['S3_DEDUP_ENABLED'] = 'false';
 
     vi.resetModules();
   }, 60000);
