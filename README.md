@@ -21,17 +21,6 @@ Convert and process media files through simple HTTP endpoints:
 - **Image**: Convert any image format to JPG
 - **Media Info**: Probe any media file for metadata and stream information
 
-## Documentation
-
-This API is built with documentation-first approach using **Hono Zod OpenAPI** and **Scalar**:
-
-- **Type-Safe Schemas**: All endpoints use Zod schemas for validation, ensuring type safety and automatic OpenAPI spec generation
-- **Interactive API Reference**: Beautiful, interactive documentation powered by Scalar at `/reference`
-- **OpenAPI 3.1 Spec**: Complete machine-readable API specification at `/doc`
-- **LLM-Friendly Docs**: Markdown documentation optimized for AI assistants at `/llms.txt` (following [llmstxt.org](https://llmstxt.org/) standard)
-
-Every endpoint is fully documented with request/response schemas, validation rules, and example payloads. No manual documentation maintenance required.
-
 ## Storage Modes
 
 The API supports two storage modes to fit different deployment scenarios:
@@ -45,6 +34,17 @@ Files are processed and returned directly in the HTTP response. Simple and strai
 Processed files are uploaded to S3-compatible storage and a URL is returned. This mode significantly reduces egress bandwidth costs since users download the processed files directly from S3 rather than through your API server. Ideal for production deployments where bandwidth costs matter.
 
 Configure S3 mode by setting `STORAGE_MODE=s3` and providing S3 credentials in your environment variables.
+
+## Documentation
+
+This API is built with documentation-first approach using **Hono Zod OpenAPI** and **Scalar**:
+
+- **Type-Safe Schemas**: All endpoints use Zod schemas for validation, ensuring type safety and automatic OpenAPI spec generation
+- **Interactive API Reference**: Beautiful, interactive documentation powered by Scalar at `/reference`
+- **OpenAPI 3.1 Spec**: Complete machine-readable API specification at `/doc`
+- **LLM-Friendly Docs**: Markdown documentation optimized for AI assistants at `/llms.txt` (following [llmstxt.org](https://llmstxt.org/) standard)
+
+Every endpoint is fully documented with request/response schemas, validation rules, and example payloads. No manual documentation maintenance required.
 
 ## Quick Start
 
