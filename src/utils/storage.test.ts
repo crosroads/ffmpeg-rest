@@ -13,11 +13,21 @@ describe('Storage Utility', () => {
   let s3Client: S3Client;
   let originalEnv: NodeJS.ProcessEnv;
   let redisClient: IORedis;
+  let redisUrlForSuite: string;
 
   beforeAll(async () => {
     originalEnv = { ...process.env };
 
-    redisClient = new IORedis(process.env['REDIS_URL'] || 'redis://localhost:6379');
+    const baseRedisUrl = process.env['TEST_REDIS_URL'] || process.env['REDIS_URL'] || 'redis://localhost:6379';
+    const url = new URL(baseRedisUrl);
+    url.pathname = '/1';
+    url.search = '';
+    url.hash = '';
+    redisUrlForSuite = url.toString();
+
+    process.env['REDIS_URL'] = redisUrlForSuite;
+
+    redisClient = new IORedis(redisUrlForSuite);
 
     container = await new LocalstackContainer('localstack/localstack:latest').start();
 
@@ -49,6 +59,7 @@ describe('Storage Utility', () => {
   }, 60000);
 
   beforeEach(async () => {
+    process.env['REDIS_URL'] = redisUrlForSuite;
     await redisClient.flushdb();
   });
 
