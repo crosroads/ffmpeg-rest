@@ -400,3 +400,132 @@ export const downloadFrameRoute = createRoute({
     }
   }
 });
+
+/**
+ * POST /video/compose - Compose video with background, audio, captions, and watermark
+ */
+export const composeVideoRoute = createRoute({
+  method: 'post',
+  path: '/video/compose',
+  tags: ['Video'],
+  summary: 'Compose video with background, audio, captions, and watermark',
+  description:
+    'Merges background video with audio, adds karaoke-style word-level captions with real-time highlighting, and overlays watermark. Returns S3/R2 URL of final video.',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            backgroundUrl: z.string().url().openapi({
+              description: 'URL of background video (MP4). Should be longer than audio duration.',
+              example: 'https://assets.easybrainrot.com/backgrounds/minecraft-parkour.mp4'
+            }),
+            backgroundId: z.string().default('default').openapi({
+              description:
+                'Background identifier for caching (e.g., "minecraft", "subway"). First request downloads and caches, subsequent requests are instant.',
+              example: 'minecraft'
+            }),
+            audioUrl: z.string().url().openapi({
+              description: 'URL of audio file (MP3/WAV).',
+              example: 'https://assets.easybrainrot.com/audio/abc123.mp3'
+            }),
+            wordTimestamps: z
+              .array(
+                z.object({
+                  word: z.string(),
+                  start: z.number().min(0),
+                  end: z.number().min(0)
+                })
+              )
+              .openapi({
+                description: 'Array of word-level timestamps for karaoke captions (required for highlighting effect).',
+                example: [
+                  { word: 'This', start: 0.0, end: 0.2 },
+                  { word: 'is', start: 0.2, end: 0.4 },
+                  { word: 'brainrot', start: 0.4, end: 1.0 }
+                ]
+              }),
+            duration: z.number().min(0).openapi({
+              description: 'Video duration in seconds (should match audio duration).',
+              example: 80.15
+            }),
+            watermarkUrl: z.string().url().optional().openapi({
+              description: 'URL of watermark image (PNG with transparency).',
+              example: 'https://assets.easybrainrot.com/watermark.png'
+            }),
+            resolution: z.string().default('1080x1920').openapi({
+              description: 'Output video resolution (WIDTHxHEIGHT).',
+              example: '1080x1920'
+            }),
+            watermarkPosition: z
+              .enum([
+                'top-left',
+                'top-center',
+                'top-right',
+                'middle-left',
+                'middle-center',
+                'middle-right',
+                'bottom-left',
+                'bottom-center',
+                'bottom-right'
+              ])
+              .default('bottom-center')
+              .openapi({
+                description: 'Watermark position on video.',
+                example: 'bottom-center'
+              }),
+            fontFamily: z.string().optional().openapi({
+              description: 'Caption font family.',
+              example: 'Arial Black'
+            }),
+            fontSize: z.number().optional().openapi({
+              description: 'Caption font size in pixels.',
+              example: 80
+            }),
+            primaryColor: z.string().optional().openapi({
+              description: 'Caption text color (hex format) - color of unspoken words.',
+              example: '#FFFFFF'
+            }),
+            highlightColor: z.string().optional().openapi({
+              description:
+                'Caption highlight color (hex format) - words transition to this color as they are spoken (karaoke effect).',
+              example: '#FFD700'
+            })
+          })
+        }
+      },
+      required: true
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            url: z.string().url().openapi({
+              description: 'S3/R2 URL of composed video',
+              example: 'https://assets.easybrainrot.com/videos/xyz789.mp4'
+            })
+          })
+        }
+      },
+      description: 'Video composition successful'
+    },
+    400: {
+      content: {
+        'application/json': {
+          schema: ErrorSchema
+        }
+      },
+      description: 'Bad request or S3 mode not enabled'
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: ErrorSchema
+        }
+      },
+      description: 'Processing failed'
+    }
+  }
+});
