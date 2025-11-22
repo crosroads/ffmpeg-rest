@@ -25,6 +25,40 @@ export const VideoExtractFramesJobDataSchema = z.object({
   compress: z.enum(['zip', 'gzip']).optional()
 });
 
+export const VideoComposeJobDataSchema = z.object({
+  backgroundUrl: z.string().url(),
+  backgroundId: z.string().default('default'),
+  audioUrl: z.string().url(),
+  wordTimestamps: z.array(
+    z.object({
+      word: z.string(),
+      start: z.number().min(0),
+      end: z.number().min(0)
+    })
+  ),
+  duration: z.number().min(0),
+  watermarkUrl: z.string().url().optional(),
+  resolution: z.string().default('1080x1920'),
+  watermarkPosition: z
+    .enum([
+      'top-left',
+      'top-center',
+      'top-right',
+      'middle-left',
+      'middle-center',
+      'middle-right',
+      'bottom-left',
+      'bottom-center',
+      'bottom-right'
+    ])
+    .default('bottom-center'),
+  fontFamily: z.string().optional(),
+  fontSize: z.number().optional(),
+  primaryColor: z.string().optional(),
+  highlightColor: z.string().optional()
+});
+
 export type VideoToMp4JobData = z.infer<typeof VideoToMp4JobDataSchema>;
 export type VideoExtractAudioJobData = z.infer<typeof VideoExtractAudioJobDataSchema>;
 export type VideoExtractFramesJobData = z.infer<typeof VideoExtractFramesJobDataSchema>;
+export type VideoComposeJobData = z.infer<typeof VideoComposeJobDataSchema>;
