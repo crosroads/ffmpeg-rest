@@ -49,14 +49,32 @@ Style: Default,${fontFamily},${fontSize},${primaryColor},${highlightColor},${out
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
-  // Add karaoke-style dialogue lines
-  timestamps.forEach(({ word, start, end }) => {
+  // Add dialogue lines with word-by-word highlighting
+  // Show 3-word context window (previous word, current highlighted word, next word)
+  timestamps.forEach(({ word, start, end }, index) => {
     const startTime = formatASSTime(start);
     const endTime = formatASSTime(end);
-    const duration = Math.round((end - start) * 100); // Convert to centiseconds
 
-    // Karaoke effect: \k<duration> before each word
-    ass += `Dialogue: 0,${startTime},${endTime},Default,,0,0,0,karaoke,{\\k${duration}}${word}\n`;
+    // Build the text with context
+    const words: string[] = [];
+
+    // Add previous word (if exists) - shown in primary color
+    if (index > 0) {
+      words.push(timestamps[index - 1].word);
+    }
+
+    // Add current word - shown in highlight color
+    words.push(`{\\c${highlightColor}}${word}{\\c${primaryColor}}`);
+
+    // Add next word (if exists) - shown in primary color
+    if (index < timestamps.length - 1) {
+      words.push(timestamps[index + 1].word);
+    }
+
+    const text = words.join(' ');
+
+    // Create dialogue line without karaoke effect
+    ass += `Dialogue: 0,${startTime},${endTime},Default,,0,0,0,,${text}\n`;
   });
 
   return ass;
