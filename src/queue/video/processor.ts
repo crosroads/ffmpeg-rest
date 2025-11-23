@@ -385,10 +385,17 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     if (env.STORAGE_MODE === 's3') {
       const { url } = await uploadToS3(outputPath, 'video/mp4', `${job.id}.mp4`);
       await rm(jobDir, { recursive: true, force: true });
-      return {
+
+      const result = {
         success: true,
         outputUrl: url
       };
+
+      console.log('[VideoCompose] Returning result:', JSON.stringify(result, null, 2));
+      console.log('[VideoCompose] URL type:', typeof url);
+      console.log('[VideoCompose] URL value:', url);
+
+      return result;
     }
 
     return {

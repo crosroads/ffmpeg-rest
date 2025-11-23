@@ -67,8 +67,14 @@ export const addJob = async (name: string, data: unknown) => {
 
 export const validateJobResult = (result: unknown): JobResult => {
   try {
-    return JobResultSchema.parse(result);
+    console.log('[Validation] Received result:', JSON.stringify(result, null, 2));
+    console.log('[Validation] Result type:', typeof result);
+    const validated = JobResultSchema.parse(result);
+    console.log('[Validation] Successfully validated:', JSON.stringify(validated, null, 2));
+    return validated;
   } catch (error) {
+    console.error('[Validation] Schema validation error:', error);
+    console.error('[Validation] Failed result:', JSON.stringify(result, null, 2));
     logger.error({ error, result }, 'Job result validation failed');
     throw new Error('Invalid job result format from queue');
   }
