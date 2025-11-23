@@ -434,9 +434,10 @@ export const composeVideoRoute = createRoute({
                 'URL of background music (MP3/WAV). Will be mixed with TTS audio at specified volume. Music loops if shorter than video duration.',
               example: 'https://assets.easybrainrot.com/music/energetic-1.mp3'
             }),
-            musicVolume: z.number().min(0).max(1).default(0.25).optional().openapi({
-              description: 'Background music volume (0.0-1.0). TTS narration is always at 100%. Default: 0.25 (25%).',
-              example: 0.25
+            musicVolume: z.number().min(0).max(1).default(0.4).optional().openapi({
+              description:
+                'Background music volume (0.0-1.0). TTS narration is always at 100%. Default: 0.4 (40%, -8dB, balanced for brainrot). Recommended: 0.2-0.6.',
+              example: 0.4
             }),
             wordTimestamps: z
               .array(

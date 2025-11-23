@@ -30,7 +30,7 @@ export const VideoComposeJobDataSchema = z.object({
   backgroundId: z.string().default('default'),
   audioUrl: z.string().url(),
   musicUrl: z.string().url().optional(),
-  musicVolume: z.number().min(0).max(1).default(0.25).optional(),
+  musicVolume: z.number().min(0).max(1).default(0.4).optional(),
   wordTimestamps: z.array(
     z.object({
       word: z.string(),

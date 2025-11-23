@@ -288,7 +288,7 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     backgroundId,
     audioUrl,
     musicUrl,
-    musicVolume = 0.25,
+    musicVolume = 0.4,
     wordTimestamps,
     duration,
     watermarkUrl,

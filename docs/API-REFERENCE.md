@@ -52,7 +52,7 @@ Authorization: Bearer <token>  (if BEARER_TOKENS configured)
 | `primaryColor` | string | ❌ No | `"#FFFFFF"` | Caption text color (hex format) - color of unspoken words. |
 | `highlightColor` | string | ❌ No | `"#FFD700"` | **Caption highlight color (hex format) - words transition to this color as they're spoken** (karaoke effect). |
 | `musicUrl` | string (URL) | ❌ No | - | **URL of background music** (MP3/WAV). Will be mixed with TTS audio at specified volume. Music loops if shorter than video duration. |
-| `musicVolume` | number | ❌ No | `0.25` | **Background music volume** (0.0-1.0). TTS narration is always at 100%. Default: 0.25 (25%). |
+| `musicVolume` | number | ❌ No | `0.4` | **Background music volume** (0.0-1.0). TTS narration is always at 100%. Default: 0.4 (40%, -8dB). Recommended: 0.2-0.6 depending on content energy. |
 
 **Word Timestamp Object:**
 ```typescript
@@ -81,7 +81,7 @@ Content-Type: application/json
   "backgroundId": "minecraft",
   "audioUrl": "https://assets.easybrainrot.com/audio/abc123.mp3",
   "musicUrl": "https://assets.easybrainrot.com/music/energetic-electronic.mp3",
-  "musicVolume": 0.25,
+  "musicVolume": 0.4,
   "wordTimestamps": [
     { "word": "This", "start": 0.0, "end": 0.2 },
     { "word": "is", "start": 0.2, "end": 0.4 },
@@ -189,11 +189,11 @@ The video composition endpoint can mix background music with TTS narration using
 
 **Visual Representation:**
 ```
-TTS Audio:     [========================================] 100%
-Background:    [==========] 25% (loops automatically)
+TTS Audio:     [========================================] 100% (0dB)
+Background:    [================] 40% (loops, -8dB)
                ↓
 Mixed Output:  [========================================]
-               TTS (clear, prominent) + Music (subtle background)
+               TTS (clear, prominent) + Music (balanced background)
 ```
 
 ### Configuration
@@ -203,19 +203,25 @@ Mixed Output:  [========================================]
 - Music will loop automatically if shorter than video
 - If omitted, video has TTS-only audio
 
-**musicVolume** (optional, default: 0.25)
+**musicVolume** (optional, default: 0.4)
 - Range: 0.0 to 1.0
-- Recommended: 0.15 - 0.35 (15% - 35%)
+- Recommended: 0.2 - 0.6 (20% - 60%)
 - TTS narration is always at 100%
 
-**Volume Balance Examples:**
+**Volume Balance Guide** (Based on YouTube/TikTok Best Practices):
 
-| Volume | Use Case | Description |
-|--------|----------|-------------|
-| `0.15` | Quiet background | Music barely audible, TTS very prominent |
-| `0.25` | **Default/Recommended** | Music provides ambiance, TTS clearly audible |
-| `0.35` | Energetic background | Music more noticeable, still TTS-focused |
-| `0.50` | Equal mix | Music and TTS at similar levels (not recommended) |
+| Linear Value | Decibels | Use Case | Description | Best For |
+|--------------|----------|----------|-------------|----------|
+| `0.2` | -14dB | Subtle | Music barely noticeable | Tutorials, educational content |
+| **`0.4`** | **-8dB** | **Balanced (Default)** | **Music clearly audible, TTS dominant** | **Brainrot, TikTok, engaging content** |
+| `0.6` | -4dB | Prominent | Music nearly as loud as voice | High-energy, music-driven content |
+| `0.8` | -2dB | Equal mix | Music and TTS at similar levels | Experimental (not recommended) |
+
+**Industry Standards:**
+- YouTube tutorials/podcasts: -20dB to -30dB (music very subtle)
+- Engaging content videos: -10dB to -15dB (balanced mix)
+- TikTok/Brainrot/Shorts: -4dB to -8dB (energetic, music-driven)
+- YouTube normalization target: -14 LUFS overall loudness
 
 ### FFmpeg Implementation
 
@@ -226,8 +232,9 @@ ffmpeg \
   -stream_loop -1 -i music.mp3 \      # Loop music infinitely
   -i tts-audio.mp3 \
   -filter_complex "
-    [1:a]volume=0.25[music];          # Reduce music to 25%
-    [2:a][music]amix=inputs=2:duration=first[audio]  # Mix TTS + music
+    [1:a]volume=1.0[tts];             # TTS at 100% (0dB)
+    [2:a]volume=0.4[music];           # Music at 40% (-8dB, default)
+    [tts][music]amix=inputs=2:duration=first[audio]  # Mix TTS + music
   " \
   -map 0:v -map [audio] \
   output.mp4
@@ -235,18 +242,28 @@ ffmpeg \
 
 **Key features:**
 - `-stream_loop -1` ensures music loops seamlessly
-- `volume=0.25` reduces music to 25% of original volume
+- `volume=1.0` keeps TTS at full volume (0dB, reference level)
+- `volume=0.4` reduces music to 40% (-8dB below TTS, balanced for brainrot)
 - `amix=inputs=2:duration=first` mixes both tracks, uses TTS duration
-- Output has single mixed audio track
+- Output has single mixed audio track with both sources
 
 ### Usage Examples
 
-**With background music:**
+**With background music (default volume):**
 ```json
 {
   "audioUrl": "https://assets.easybrainrot.com/audio/narration.mp3",
-  "musicUrl": "https://assets.easybrainrot.com/music/energetic.mp3",
-  "musicVolume": 0.25
+  "musicUrl": "https://assets.easybrainrot.com/music/energetic.mp3"
+  // musicVolume defaults to 0.4 (-8dB, balanced for brainrot)
+}
+```
+
+**With custom music volume:**
+```json
+{
+  "audioUrl": "https://assets.easybrainrot.com/audio/narration.mp3",
+  "musicUrl": "https://assets.easybrainrot.com/music/chill-vibes.mp3",
+  "musicVolume": 0.2  // Subtle background for calmer content
 }
 ```
 
@@ -260,11 +277,19 @@ ffmpeg \
 
 ### Best Practices
 
-1. **Choose loopable music** - Tracks with seamless transitions work best
-2. **Test volume levels** - Default 0.25 works for most use cases
-3. **Match music style** - Upbeat for energetic content, chill for calm content
-4. **Keep TTS clear** - Music should enhance, not overpower narration
-5. **Use royalty-free music** - Ensure proper licensing for commercial use
+1. **Choose loopable music** - Tracks with seamless transitions work best for videos longer than music duration
+2. **Match music to content energy**:
+   - High-energy brainrot/TikTok: 0.4-0.6 (prominent music)
+   - Educational/tutorial: 0.2-0.3 (subtle background)
+   - Podcasts/interviews: 0.1-0.2 (barely noticeable)
+3. **Test your specific music** - Some tracks are pre-mastered louder than others, adjust accordingly
+4. **Keep TTS intelligible** - Narration should always be clearly audible above music
+5. **Consider target platform**:
+   - TikTok/YouTube Shorts: Higher volumes (0.4-0.6) for engagement
+   - YouTube long-form: Medium volumes (0.3-0.4) for retention
+   - Podcasts: Low volumes (0.1-0.2) for clarity
+6. **Use royalty-free music** - Ensure proper licensing for commercial use
+7. **Monitor loudness** - YouTube normalizes to -14 LUFS, consider overall mix loudness
 
 ---
 
