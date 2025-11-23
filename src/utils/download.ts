@@ -42,7 +42,7 @@ export async function downloadFiles(downloads: { url: string; path: string }[]):
  * Cache persists for container lifetime, saving 30-60s per video after first download
  */
 export async function getCachedBackgroundVideo(backgroundId: string, backgroundUrl: string): Promise<string> {
-  const cacheDir = '/app/cache/backgrounds';
+  const cacheDir = '/tmp/cache/backgrounds';
   const cachedPath = path.join(cacheDir, `${backgroundId}.mp4`);
 
   // Check if already cached
