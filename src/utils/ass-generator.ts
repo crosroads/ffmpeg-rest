@@ -30,7 +30,7 @@ export function generateASS(timestamps: WordTimestamp[], options: ASSGeneratorOp
   const primaryColor = colorToASS(options.primaryColor || '#FFFFFF');
   const highlightColor = colorToASS(options.highlightColor || '#FFD700');
   const outlineColor = colorToASS(options.outlineColor || '#000000');
-  const marginBottom = options.marginBottom || 150; // 150px from bottom for bottom-third position
+  const marginBottom = options.marginBottom || 300; // 300px from bottom (~84% from top, safe distance from watermark)
 
   // ASS file header
   let ass = `[Script Info]
