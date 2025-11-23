@@ -6,7 +6,8 @@ import {
   extractAudioUrlRoute,
   extractFramesRoute,
   extractFramesUrlRoute,
-  downloadFrameRoute
+  downloadFrameRoute,
+  composeVideoRoute
 } from './schemas';
 import { addJob, JobType, queueEvents, validateJobResult } from '~/queue';
 import { env } from '~/config/env';
@@ -306,5 +307,78 @@ export function registerVideoRoutes(app: OpenAPIHono) {
       },
       501
     );
+  });
+
+  app.openapi(composeVideoRoute, async (c) => {
+    try {
+      if (env.STORAGE_MODE !== 's3') {
+        return c.json(
+          {
+            error: 'S3 mode required',
+            message: 'Video composition requires STORAGE_MODE=s3 in environment variables'
+          },
+          400
+        );
+      }
+
+      const body = c.req.valid('json');
+
+      console.log('[VideoCompose] Received request:', {
+        backgroundUrl: body.backgroundUrl,
+        backgroundId: body.backgroundId,
+        audioUrl: body.audioUrl,
+        duration: body.duration,
+        wordCount: body.wordTimestamps.length,
+        resolution: body.resolution,
+        hasWatermark: !!body.watermarkUrl
+      });
+
+      // Queue the job
+      const job = await addJob(JobType.VIDEO_COMPOSE, {
+        backgroundUrl: body.backgroundUrl,
+        backgroundId: body.backgroundId,
+        audioUrl: body.audioUrl,
+        wordTimestamps: body.wordTimestamps,
+        duration: body.duration,
+        watermarkUrl: body.watermarkUrl,
+        resolution: body.resolution,
+        watermarkPosition: body.watermarkPosition,
+        fontFamily: body.fontFamily,
+        fontSize: body.fontSize,
+        primaryColor: body.primaryColor,
+        highlightColor: body.highlightColor
+      });
+
+      console.log(`[VideoCompose] Job queued: ${job.id}`);
+
+      // Wait for completion
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
+
+      if (!result.success || !result.outputUrl) {
+        console.error('[VideoCompose] Job failed:', result.error);
+        return c.json(
+          {
+            error: result.error || 'Video composition failed'
+          },
+          400
+        );
+      }
+
+      console.log(`[VideoCompose] Job complete: ${result.outputUrl}`);
+
+      return c.json({ url: result.outputUrl }, 200);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[VideoCompose] Error:', errorMessage);
+
+      return c.json(
+        {
+          error: 'Processing failed',
+          message: errorMessage
+        },
+        500
+      );
+    }
   });
 }

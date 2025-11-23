@@ -1,14 +1,23 @@
 import type { Job } from 'bullmq';
 import type { JobResult } from '..';
-import type { VideoToMp4JobData, VideoExtractAudioJobData, VideoExtractFramesJobData } from './schemas';
+import type {
+  VideoToMp4JobData,
+  VideoExtractAudioJobData,
+  VideoExtractFramesJobData,
+  VideoComposeJobData
+} from './schemas';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { existsSync } from 'fs';
-import { mkdir, rm } from 'fs/promises';
+import { mkdir, rm, writeFile } from 'fs/promises';
 import { dirname, basename } from 'path';
 import path from 'path';
 import { env } from '~/config/env';
 import { uploadToS3 } from '~/utils/storage';
+import { generateASS } from '~/utils/ass-generator';
+import type { WatermarkPosition } from '~/utils/watermark-positions';
+import { getWatermarkPosition } from '~/utils/watermark-positions';
+import { downloadFile, getCachedBackgroundVideo } from '~/utils/download';
 
 const execFileAsync = promisify(execFile);
 
@@ -269,6 +278,135 @@ export async function processVideoExtractFrames(job: Job<VideoExtractFramesJobDa
     return {
       success: false,
       error: `Failed to extract frames from video: ${errorMessage}`
+    };
+  }
+}
+
+export async function processVideoCompose(job: Job<VideoComposeJobData>): Promise<JobResult> {
+  const {
+    backgroundUrl,
+    backgroundId,
+    audioUrl,
+    wordTimestamps,
+    duration,
+    watermarkUrl,
+    resolution,
+    watermarkPosition,
+    fontFamily,
+    fontSize,
+    primaryColor,
+    highlightColor
+  } = job.data;
+
+  const jobDir = path.join(env.TEMP_DIR, job.id);
+
+  try {
+    // 1. Create temp directory
+    await mkdir(jobDir, { recursive: true });
+
+    const audioPath = path.join(jobDir, 'audio.mp3');
+    const watermarkPath = path.join(jobDir, 'watermark.png');
+    const captionsPath = path.join(jobDir, 'captions.ass');
+    const outputPath = path.join(jobDir, 'output.mp4');
+
+    // 2. Generate ASS subtitle file with karaoke highlighting
+    const assContent = generateASS(wordTimestamps, {
+      resolution,
+      fontFamily,
+      fontSize,
+      primaryColor,
+      highlightColor
+    });
+    await writeFile(captionsPath, assContent, 'utf-8');
+
+    // 3. Get background video (cached for performance)
+    const backgroundPath = await getCachedBackgroundVideo(backgroundId || 'default', backgroundUrl);
+
+    // 4. Download audio (and watermark if provided)
+    const downloads = [{ url: audioUrl, path: audioPath }];
+
+    if (watermarkUrl) {
+      downloads.push({ url: watermarkUrl, path: watermarkPath });
+    }
+
+    await Promise.all(downloads.map(({ url, path }) => downloadFile(url, path)));
+
+    // 5. Build FFmpeg arguments
+    const watermarkOverlayPos = getWatermarkPosition(watermarkPosition as WatermarkPosition);
+
+    const inputs: string[] = ['-i', backgroundPath, '-i', audioPath];
+
+    if (watermarkUrl) {
+      inputs.push('-i', watermarkPath);
+    }
+
+    let filterComplex = `[0:v]trim=duration=${duration}[bg];`;
+
+    if (watermarkUrl) {
+      filterComplex += `[bg][2:v]overlay=${watermarkOverlayPos}[watermarked];`;
+      filterComplex += `[watermarked]ass='${captionsPath.replace(/'/g, "'\\''")}'[final]`;
+    } else {
+      filterComplex += `[bg]ass='${captionsPath.replace(/'/g, "'\\''")}'[final]`;
+    }
+
+    const args = [
+      ...inputs,
+      '-filter_complex',
+      filterComplex,
+      '-map',
+      '[final]',
+      '-map',
+      '1:a',
+      '-c:v',
+      'libx264',
+      '-preset',
+      'fast',
+      '-crf',
+      '23',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '192k',
+      '-r',
+      '30',
+      '-s',
+      resolution,
+      '-shortest',
+      '-y',
+      outputPath
+    ];
+
+    console.log('[VideoCompose] Running FFmpeg with args:', args);
+
+    // 6. Execute FFmpeg
+    await execFileAsync('ffmpeg', args, { timeout: PROCESSING_TIMEOUT });
+
+    // 7. Handle storage mode
+    if (env.STORAGE_MODE === 's3') {
+      const { url } = await uploadToS3(outputPath, 'video/mp4', `${job.id}.mp4`);
+      await rm(jobDir, { recursive: true, force: true });
+      return {
+        success: true,
+        outputUrl: url
+      };
+    }
+
+    return {
+      success: true,
+      outputPath
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[VideoCompose] Error:', errorMessage);
+
+    // Cleanup on error
+    await rm(jobDir, { recursive: true, force: true }).catch(() => {
+      // Ignore cleanup errors
+    });
+
+    return {
+      success: false,
+      error: `Failed to compose video: ${errorMessage}`
     };
   }
 }
