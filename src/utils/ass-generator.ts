@@ -59,13 +59,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   segments.forEach((segment) => {
     const startTime = formatASSTime(segment.startTime);
     const endTime = formatASSTime(segment.endTime);
+    const dialogueStartMs = segment.startTime * 1000; // Dialogue start in milliseconds
 
     // Build text with inline color animations for each word
     const textWithAnimations = segment.words
       .map((wordInfo) => {
-        // Convert seconds to milliseconds for \t animation tags
-        const highlightStartMs = Math.round(wordInfo.start * 1000);
-        const highlightEndMs = Math.round(wordInfo.end * 1000);
+        // Calculate timing RELATIVE to dialogue start (required by ASS \t tag)
+        const highlightStartMs = Math.round(wordInfo.start * 1000 - dialogueStartMs);
+        const highlightEndMs = Math.round(wordInfo.end * 1000 - dialogueStartMs);
 
         // Animation pattern: white -> gold (at word start) -> white (at word end)
         const animationTag = `{\\1c${primaryColor}&\\t(${highlightStartMs},${highlightStartMs},\\1c${highlightColor}&)\\t(${highlightEndMs},${highlightEndMs},\\1c${primaryColor}&)}`;
