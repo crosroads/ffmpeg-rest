@@ -16,7 +16,7 @@ export interface ASSGeneratorOptions {
   primaryColor?: string; // Default: white (#FFFFFF)
   highlightColor?: string; // Default: gold (#FFD700)
   outlineColor?: string; // Default: black (#000000)
-  marginBottom?: number; // Default: 80px from bottom
+  marginBottom?: number; // Default: 0 (center aligned)
 }
 
 /**
@@ -30,7 +30,7 @@ export function generateASS(timestamps: WordTimestamp[], options: ASSGeneratorOp
   const primaryColor = colorToASS(options.primaryColor || '#FFFFFF');
   const highlightColor = colorToASS(options.highlightColor || '#FFD700');
   const outlineColor = colorToASS(options.outlineColor || '#000000');
-  const marginBottom = options.marginBottom || 80;
+  const marginBottom = options.marginBottom || 0; // 0 for center alignment
 
   // ASS file header
   let ass = `[Script Info]
@@ -43,7 +43,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontFamily},${fontSize},${primaryColor},${highlightColor},${outlineColor},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,10,10,${marginBottom},1
+Style: Default,${fontFamily},${fontSize},${primaryColor},${highlightColor},${outlineColor},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,5,10,10,${marginBottom},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
