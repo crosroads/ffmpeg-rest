@@ -287,6 +287,8 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     backgroundUrl,
     backgroundId,
     audioUrl,
+    musicUrl,
+    musicVolume = 0.25,
     wordTimestamps,
     duration,
     watermarkUrl,
@@ -305,6 +307,7 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     await mkdir(jobDir, { recursive: true });
 
     const audioPath = path.join(jobDir, 'audio.mp3');
+    const musicPath = path.join(jobDir, 'music.mp3');
     const watermarkPath = path.join(jobDir, 'watermark.png');
     const captionsPath = path.join(jobDir, 'captions.ass');
     const outputPath = path.join(jobDir, 'output.mp4');
@@ -326,8 +329,12 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     // 3. Get background video (cached for performance)
     const backgroundPath = await getCachedBackgroundVideo(backgroundId || 'default', backgroundUrl);
 
-    // 4. Download audio (and watermark if provided)
+    // 4. Download audio, music (and watermark if provided)
     const downloads = [{ url: audioUrl, path: audioPath }];
+
+    if (musicUrl) {
+      downloads.push({ url: musicUrl, path: musicPath });
+    }
 
     if (watermarkUrl) {
       downloads.push({ url: watermarkUrl, path: watermarkPath });
@@ -338,20 +345,47 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     // 5. Build FFmpeg arguments
     const watermarkOverlayPos = getWatermarkPosition(watermarkPosition as WatermarkPosition);
 
+    // Build inputs: [background, audio, music?, watermark?]
     const inputs: string[] = ['-i', backgroundPath, '-i', audioPath];
 
+    // Track input indices (FFmpeg input numbering: 0, 1, 2, ...)
+    let currentInputIndex = 2; // background=0, audio=1, next is 2
+    let musicInputIndex = -1;
+    let watermarkInputIndex = -1;
+
+    if (musicUrl) {
+      musicInputIndex = currentInputIndex++;
+      inputs.push('-stream_loop', '-1', '-i', musicPath); // Loop music infinitely
+    }
+
     if (watermarkUrl) {
+      watermarkInputIndex = currentInputIndex++;
       inputs.push('-i', watermarkPath);
     }
 
-    let filterComplex = `[0:v]trim=duration=${duration}[bg];`;
+    // Build filter_complex
+    let filterComplex = '';
+
+    // Audio mixing (if music provided)
+    if (musicUrl) {
+      // Mix TTS (100%) with music (musicVolume)
+      filterComplex += `[1:a]volume=1.0[tts];`;
+      filterComplex += `[${musicInputIndex}:a]volume=${musicVolume}[music];`;
+      filterComplex += `[tts][music]amix=inputs=2:duration=first[audio];`;
+    }
+
+    // Video processing
+    filterComplex += `[0:v]trim=duration=${duration}[bg];`;
 
     if (watermarkUrl) {
-      filterComplex += `[bg][2:v]overlay=${watermarkOverlayPos}[watermarked];`;
+      filterComplex += `[bg][${watermarkInputIndex}:v]overlay=${watermarkOverlayPos}[watermarked];`;
       filterComplex += `[watermarked]ass='${captionsPath.replace(/'/g, "'\\''")}'[final]`;
     } else {
       filterComplex += `[bg]ass='${captionsPath.replace(/'/g, "'\\''")}'[final]`;
     }
+
+    // Determine audio source
+    const audioSource = musicUrl ? '[audio]' : '1:a';
 
     const args = [
       ...inputs,
@@ -360,7 +394,7 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
       '-map',
       '[final]',
       '-map',
-      '1:a',
+      audioSource,
       '-c:v',
       'libx264',
       '-preset',

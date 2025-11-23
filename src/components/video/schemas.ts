@@ -429,6 +429,15 @@ export const composeVideoRoute = createRoute({
               description: 'URL of audio file (MP3/WAV).',
               example: 'https://assets.easybrainrot.com/audio/abc123.mp3'
             }),
+            musicUrl: z.string().url().optional().openapi({
+              description:
+                'URL of background music (MP3/WAV). Will be mixed with TTS audio at specified volume. Music loops if shorter than video duration.',
+              example: 'https://assets.easybrainrot.com/music/energetic-1.mp3'
+            }),
+            musicVolume: z.number().min(0).max(1).default(0.25).optional().openapi({
+              description: 'Background music volume (0.0-1.0). TTS narration is always at 100%. Default: 0.25 (25%).',
+              example: 0.25
+            }),
             wordTimestamps: z
               .array(
                 z.object({

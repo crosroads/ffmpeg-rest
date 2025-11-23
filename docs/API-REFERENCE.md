@@ -14,6 +14,7 @@
 
 **Key Features:**
 - ✨ **Karaoke Highlighting**: Words transition to gold color as they're spoken, synchronized with audio
+- 🎵 **Background Music Mixing**: Mix background music with TTS narration at customizable volume levels
 - ⚡ **Background Caching**: First request downloads background (~30-60s), all subsequent requests use cache (instant)
 - 📱 **Mobile-Optimized**: Vertical 1080x1920 format for TikTok/Instagram Reels
 - 🎬 **Professional Quality**: H.264 encoding, 30 FPS, optimized bitrate
@@ -50,6 +51,8 @@ Authorization: Bearer <token>  (if BEARER_TOKENS configured)
 | `fontSize` | number | ❌ No | `80` | Caption font size in pixels. |
 | `primaryColor` | string | ❌ No | `"#FFFFFF"` | Caption text color (hex format) - color of unspoken words. |
 | `highlightColor` | string | ❌ No | `"#FFD700"` | **Caption highlight color (hex format) - words transition to this color as they're spoken** (karaoke effect). |
+| `musicUrl` | string (URL) | ❌ No | - | **URL of background music** (MP3/WAV). Will be mixed with TTS audio at specified volume. Music loops if shorter than video duration. |
+| `musicVolume` | number | ❌ No | `0.25` | **Background music volume** (0.0-1.0). TTS narration is always at 100%. Default: 0.25 (25%). |
 
 **Word Timestamp Object:**
 ```typescript
@@ -67,7 +70,7 @@ Authorization: Bearer <token>  (if BEARER_TOKENS configured)
 
 ---
 
-### Example Request
+### Example Request (With Background Music)
 
 ```json
 POST /video/compose
@@ -77,6 +80,8 @@ Content-Type: application/json
   "backgroundUrl": "https://assets.easybrainrot.com/backgrounds/minecraft-parkour.mp4",
   "backgroundId": "minecraft",
   "audioUrl": "https://assets.easybrainrot.com/audio/abc123.mp3",
+  "musicUrl": "https://assets.easybrainrot.com/music/energetic-electronic.mp3",
+  "musicVolume": 0.25,
   "wordTimestamps": [
     { "word": "This", "start": 0.0, "end": 0.2 },
     { "word": "is", "start": 0.2, "end": 0.4 },
@@ -94,6 +99,26 @@ Content-Type: application/json
   "fontSize": 80,
   "primaryColor": "#FFFFFF",
   "highlightColor": "#FFD700"
+}
+```
+
+### Example Request (Without Music)
+
+```json
+POST /video/compose
+Content-Type: application/json
+
+{
+  "backgroundUrl": "https://assets.easybrainrot.com/backgrounds/minecraft-parkour.mp4",
+  "backgroundId": "minecraft",
+  "audioUrl": "https://assets.easybrainrot.com/audio/abc123.mp3",
+  "wordTimestamps": [
+    { "word": "This", "start": 0.0, "end": 0.2 },
+    { "word": "is", "start": 0.2, "end": 0.4 },
+    { "word": "brainrot", "start": 0.4, "end": 1.0 }
+  ],
+  "duration": 5.0,
+  "resolution": "1080x1920"
 }
 ```
 
@@ -145,6 +170,101 @@ Content-Type: application/json
   "message": "Detailed error message"
 }
 ```
+
+---
+
+## 🎵 Background Music Mixing Explained
+
+### How It Works
+
+The video composition endpoint can mix background music with TTS narration using FFmpeg's `amix` audio filter. This creates professional-quality videos with balanced audio levels.
+
+**Audio Mixing Process:**
+
+1. **TTS Narration**: Always at 100% volume (primary audio)
+2. **Background Music**: Adjustable volume (default: 25%)
+3. **Mixing**: Both tracks are combined using FFmpeg's `amix` filter
+4. **Looping**: Music automatically loops if shorter than video duration
+5. **Output**: Single audio track with both TTS and music
+
+**Visual Representation:**
+```
+TTS Audio:     [========================================] 100%
+Background:    [==========] 25% (loops automatically)
+               ↓
+Mixed Output:  [========================================]
+               TTS (clear, prominent) + Music (subtle background)
+```
+
+### Configuration
+
+**musicUrl** (optional)
+- URL to MP3 or WAV music file
+- Music will loop automatically if shorter than video
+- If omitted, video has TTS-only audio
+
+**musicVolume** (optional, default: 0.25)
+- Range: 0.0 to 1.0
+- Recommended: 0.15 - 0.35 (15% - 35%)
+- TTS narration is always at 100%
+
+**Volume Balance Examples:**
+
+| Volume | Use Case | Description |
+|--------|----------|-------------|
+| `0.15` | Quiet background | Music barely audible, TTS very prominent |
+| `0.25` | **Default/Recommended** | Music provides ambiance, TTS clearly audible |
+| `0.35` | Energetic background | Music more noticeable, still TTS-focused |
+| `0.50` | Equal mix | Music and TTS at similar levels (not recommended) |
+
+### FFmpeg Implementation
+
+**Command structure:**
+```bash
+ffmpeg \
+  -i background.mp4 \
+  -stream_loop -1 -i music.mp3 \      # Loop music infinitely
+  -i tts-audio.mp3 \
+  -filter_complex "
+    [1:a]volume=0.25[music];          # Reduce music to 25%
+    [2:a][music]amix=inputs=2:duration=first[audio]  # Mix TTS + music
+  " \
+  -map 0:v -map [audio] \
+  output.mp4
+```
+
+**Key features:**
+- `-stream_loop -1` ensures music loops seamlessly
+- `volume=0.25` reduces music to 25% of original volume
+- `amix=inputs=2:duration=first` mixes both tracks, uses TTS duration
+- Output has single mixed audio track
+
+### Usage Examples
+
+**With background music:**
+```json
+{
+  "audioUrl": "https://assets.easybrainrot.com/audio/narration.mp3",
+  "musicUrl": "https://assets.easybrainrot.com/music/energetic.mp3",
+  "musicVolume": 0.25
+}
+```
+
+**Without background music:**
+```json
+{
+  "audioUrl": "https://assets.easybrainrot.com/audio/narration.mp3"
+  // No musicUrl = TTS-only audio
+}
+```
+
+### Best Practices
+
+1. **Choose loopable music** - Tracks with seamless transitions work best
+2. **Test volume levels** - Default 0.25 works for most use cases
+3. **Match music style** - Upbeat for energetic content, chill for calm content
+4. **Keep TTS clear** - Music should enhance, not overpower narration
+5. **Use royalty-free music** - Ensure proper licensing for commercial use
 
 ---
 
