@@ -26,6 +26,22 @@ Composes videos with:
 
 ---
 
+## 🚀 Current Deployment Status
+
+**Environment:** ✅ **LIVE ON RAILWAY**
+- **Server:** Running (Node 22.20.0, Port 8080)
+- **Worker:** Running (5 concurrent jobs)
+- **Redis:** Connected (v8.2.1)
+- **R2 Storage:** Connected (easybrainrot-assets)
+- **Video Composition:** Fully Operational
+
+**Last Deployment:** November 23, 2025
+**Health Checks:** All Passing ✅
+
+See **[DEPLOYMENT-STATUS.md](./DEPLOYMENT-STATUS.md)** for complete deployment details, logs, and monitoring information.
+
+---
+
 ## 📚 Documentation
 
 ### 1. [CUSTOMIZATION-GUIDE.md](./CUSTOMIZATION-GUIDE.md) ⭐
@@ -45,6 +61,7 @@ Composes videos with:
 - File checklist
 - Environment variables
 - Test commands
+- **✅ Deployment progress tracking**
 
 **Use this after initial setup for quick reference.**
 
@@ -57,6 +74,17 @@ Composes videos with:
 - Error handling
 
 **Use this when integrating with your application.**
+
+### 4. [DEPLOYMENT-STATUS.md](./DEPLOYMENT-STATUS.md) 🆕
+**Current production deployment status**
+- Infrastructure overview
+- Environment variables
+- Deployment logs
+- Health monitoring
+- Known issues & warnings
+- Testing status
+
+**Use this to check current deployment state.**
 
 ---
 
@@ -231,6 +259,7 @@ Same as original template: Apache-2.0
 
 ---
 
-**Status:** ✅ Production Ready
+**Status:** ✅ **DEPLOYED AND OPERATIONAL**
+**Environment:** Railway (Production)
 **Maintained By:** EasyBrainrot Team
-**Last Updated:** November 22, 2025
+**Last Updated:** November 23, 2025
