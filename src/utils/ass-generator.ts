@@ -63,13 +63,17 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     // Build text with inline color animations for each word
     const textWithAnimations = segment.words
-      .map((wordInfo) => {
+      .map((wordInfo, wordIndex) => {
         // Calculate timing RELATIVE to dialogue start (required by ASS \t tag)
         const highlightStartMs = Math.round(wordInfo.start * 1000 - dialogueStartMs);
         const highlightEndMs = Math.round(wordInfo.end * 1000 - dialogueStartMs);
 
-        // Animation pattern: white -> gold (at word start) -> white (at word end)
-        const animationTag = `{\\1c${primaryColor}&\\t(${highlightStartMs},${highlightStartMs},\\1c${highlightColor}&)\\t(${highlightEndMs},${highlightEndMs},\\1c${primaryColor}&)}`;
+        // First word: Start as GOLD, change to white at end (no flash)
+        // Other words: Start white, change to gold at start, then white at end
+        const animationTag =
+          wordIndex === 0
+            ? `{\\1c${highlightColor}&\\t(${highlightEndMs},${highlightEndMs},\\1c${primaryColor}&)}`
+            : `{\\1c${primaryColor}&\\t(${highlightStartMs},${highlightStartMs},\\1c${highlightColor}&)\\t(${highlightEndMs},${highlightEndMs},\\1c${primaryColor}&)}`;
 
         return `${animationTag}${wordInfo.word}`;
       })
