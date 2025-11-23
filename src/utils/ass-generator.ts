@@ -53,24 +53,23 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   // Brainrot style: 2-3 word sliding window with current word highlighted
   timestamps.forEach(({ word, start, end }, index) => {
     const startTime = formatASSTime(start);
-    // Each dialogue shows until next word starts (or natural end for last word)
-    const endTime =
-      index < timestamps.length - 1 ? formatASSTime(timestamps[index + 1].start - 0.01) : formatASSTime(end);
+    // Each dialogue shows until next word starts (exact boundary, no gap)
+    const endTime = index < timestamps.length - 1 ? formatASSTime(timestamps[index + 1].start) : formatASSTime(end);
 
     // Build text with sliding window
     const words: string[] = [];
 
-    // Add previous word in white (if exists)
+    // Add previous word in white (explicitly set color)
     if (index > 0) {
-      words.push(timestamps[index - 1].word);
+      words.push(`{\\1c${primaryColor}&}${timestamps[index - 1].word}`);
     }
 
     // Current word in GOLD (highlighted)
-    words.push(`{\\c${highlightColor}&}${word}{\\c${primaryColor}&}`);
+    words.push(`{\\1c${highlightColor}&}${word}`);
 
-    // Add next word in white (if exists)
+    // Add next word in white (explicitly set color)
     if (index < timestamps.length - 1) {
-      words.push(timestamps[index + 1].word);
+      words.push(`{\\1c${primaryColor}&}${timestamps[index + 1].word}`);
     }
 
     const text = words.join(' ');
