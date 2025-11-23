@@ -86,6 +86,29 @@ See **[DEPLOYMENT-STATUS.md](./DEPLOYMENT-STATUS.md)** for complete deployment d
 
 **Use this to check current deployment state.**
 
+### 5. [CAPTION-SYSTEM.md](./CAPTION-SYSTEM.md) 🆕
+**Technical deep dive into caption implementation**
+- ASS subtitle format specification
+- Phrase segmentation algorithm
+- Inline color animation system
+- Timing calculations (relative vs absolute)
+- Font installation guide
+- Performance optimizations
+- Complete code walkthrough
+
+**Use this to understand how the caption system works.**
+
+### 6. [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) 🆕
+**Common issues and solutions from production deployment**
+- Caption issues (no captions, overlapping, no highlighting, white flash)
+- Video composition issues (cache permissions, job errors)
+- Deployment issues (build failures, FFmpeg missing)
+- Performance issues (slow processing, memory)
+- Storage issues (R2 upload, public URLs)
+- Quick diagnostic checklists
+
+**Use this when encountering problems.**
+
 ---
 
 ## 🚀 Quick Setup
@@ -250,7 +273,9 @@ Same as original template: Apache-2.0
 ## 🆘 Support
 
 **For customization questions:**
-- See [CUSTOMIZATION-GUIDE.md](./CUSTOMIZATION-GUIDE.md) - Troubleshooting section
+- See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Comprehensive problem-solving guide
+- See [CUSTOMIZATION-GUIDE.md](./CUSTOMIZATION-GUIDE.md) - Setup and deployment
+- See [CAPTION-SYSTEM.md](./CAPTION-SYSTEM.md) - Technical implementation details
 - Check Railway logs for FFmpeg errors
 - Review [API-REFERENCE.md](./API-REFERENCE.md) for integration help
 
