@@ -11,7 +11,7 @@ export interface WordTimestamp {
 
 export interface ASSGeneratorOptions {
   resolution: string; // e.g., '1080x1920'
-  fontFamily?: string; // Default: 'Arial Black'
+  fontFamily?: string; // Default: 'DejaVu Sans'
   fontSize?: number; // Default: 80
   primaryColor?: string; // Default: white (#FFFFFF)
   highlightColor?: string; // Default: gold (#FFD700)
@@ -25,7 +25,7 @@ export interface ASSGeneratorOptions {
 export function generateASS(timestamps: WordTimestamp[], options: ASSGeneratorOptions): string {
   const [width, height] = options.resolution.split('x').map(Number);
 
-  const fontFamily = options.fontFamily || 'Arial Black';
+  const fontFamily = options.fontFamily || 'DejaVu Sans';
   const fontSize = options.fontSize || 80;
   const primaryColor = colorToASS(options.primaryColor || '#FFFFFF');
   const highlightColor = colorToASS(options.highlightColor || '#FFD700');
