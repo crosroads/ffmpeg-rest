@@ -30,7 +30,7 @@ export function generateASS(timestamps: WordTimestamp[], options: ASSGeneratorOp
   const primaryColor = colorToASS(options.primaryColor || '#FFFFFF');
   const highlightColor = colorToASS(options.highlightColor || '#FFD700');
   const outlineColor = colorToASS(options.outlineColor || '#000000');
-  const marginBottom = options.marginBottom || 0; // 0 for center alignment
+  const marginBottom = options.marginBottom || 150; // 150px from bottom for bottom-third position
 
   // ASS file header
   let ass = `[Script Info]
@@ -43,22 +43,39 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontFamily},${fontSize},${primaryColor},${highlightColor},${outlineColor},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,5,10,10,${marginBottom},1
+Style: Default,${fontFamily},${fontSize},${primaryColor},${highlightColor},${outlineColor},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,10,10,${marginBottom},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
   // Add dialogue lines with word-by-word highlighting
-  // Standard brainrot style: show only current word, highlighted
-  timestamps.forEach(({ word, start, end }) => {
+  // Brainrot style: 2-3 word sliding window with current word highlighted
+  timestamps.forEach(({ word, start, end }, index) => {
     const startTime = formatASSTime(start);
-    const endTime = formatASSTime(end);
+    // End slightly before next word to avoid overlap
+    const nextWordStart = index < timestamps.length - 1 ? timestamps[index + 1].start : end;
+    const endTime = formatASSTime(Math.min(end, nextWordStart - 0.01));
 
-    // Show only the current word, highlighted
-    const text = `{\\c${highlightColor}&}${word}{\\c${primaryColor}&}`;
+    // Build text with sliding window
+    const words: string[] = [];
 
-    // Create dialogue line - only this word will be visible during this time
+    // Add previous word in white (if exists)
+    if (index > 0) {
+      words.push(timestamps[index - 1].word);
+    }
+
+    // Current word in GOLD (highlighted)
+    words.push(`{\\c${highlightColor}&}${word}{\\c${primaryColor}&}`);
+
+    // Add next word in white (if exists)
+    if (index < timestamps.length - 1) {
+      words.push(timestamps[index + 1].word);
+    }
+
+    const text = words.join(' ');
+
+    // Create dialogue line with no overlap
     ass += `Dialogue: 0,${startTime},${endTime},Default,,0,0,0,,${text}\n`;
   });
 
