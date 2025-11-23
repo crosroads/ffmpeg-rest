@@ -317,6 +317,10 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
       primaryColor,
       highlightColor
     });
+    console.log('[VideoCompose] Generated ASS content:');
+    console.log(assContent);
+    console.log('[VideoCompose] ASS content length:', assContent.length);
+    console.log('[VideoCompose] Font family:', fontFamily);
     await writeFile(captionsPath, assContent, 'utf-8');
 
     // 3. Get background video (cached for performance)
