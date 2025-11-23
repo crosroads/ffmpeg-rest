@@ -16,11 +16,13 @@ export interface ASSGeneratorOptions {
   primaryColor?: string; // Default: white (#FFFFFF)
   highlightColor?: string; // Default: gold (#FFD700)
   outlineColor?: string; // Default: black (#000000)
-  marginBottom?: number; // Default: 0 (center aligned)
+  marginBottom?: number; // Default: 300px from bottom
+  wordsPerSegment?: number; // Default: 3 (2-3 word phrases)
 }
 
 /**
  * Generate ASS subtitle file content from word timestamps
+ * Uses phrase segmentation with inline color animation (not separate dialogue per word)
  */
 export function generateASS(timestamps: WordTimestamp[], options: ASSGeneratorOptions): string {
   const [width, height] = options.resolution.split('x').map(Number);
@@ -30,7 +32,8 @@ export function generateASS(timestamps: WordTimestamp[], options: ASSGeneratorOp
   const primaryColor = colorToASS(options.primaryColor || '#FFFFFF');
   const highlightColor = colorToASS(options.highlightColor || '#FFD700');
   const outlineColor = colorToASS(options.outlineColor || '#000000');
-  const marginBottom = options.marginBottom || 300; // 300px from bottom (~84% from top, safe distance from watermark)
+  const marginBottom = options.marginBottom || 300;
+  const wordsPerSegment = options.wordsPerSegment || 3;
 
   // ASS file header
   let ass = `[Script Info]
@@ -49,37 +52,85 @@ Style: Default,${fontFamily},${fontSize},${primaryColor},${highlightColor},${out
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
-  // Add dialogue lines with word-by-word highlighting
-  // Brainrot style: 2-3 word sliding window with current word highlighted
-  timestamps.forEach(({ word, start, end }, index) => {
-    const startTime = formatASSTime(start);
-    // Each dialogue ends 0.01s before next word to prevent ASS renderer overlap
-    const endTime =
-      index < timestamps.length - 1 ? formatASSTime(timestamps[index + 1].start - 0.01) : formatASSTime(end);
+  // Segment words into phrases (2-3 words per dialogue)
+  const segments = segmentWords(timestamps, wordsPerSegment);
 
-    // Build text with sliding window
-    const words: string[] = [];
+  // Generate dialogue for each segment with inline color animations
+  segments.forEach((segment) => {
+    const startTime = formatASSTime(segment.startTime);
+    const endTime = formatASSTime(segment.endTime);
 
-    // Add previous word in white (explicitly set color)
-    if (index > 0) {
-      words.push(`{\\1c${primaryColor}&}${timestamps[index - 1].word}`);
-    }
+    // Build text with inline color animations for each word
+    const textWithAnimations = segment.words
+      .map((wordInfo) => {
+        // Convert seconds to milliseconds for \t animation tags
+        const highlightStartMs = Math.round(wordInfo.start * 1000);
+        const highlightEndMs = Math.round(wordInfo.end * 1000);
 
-    // Current word in GOLD (highlighted)
-    words.push(`{\\1c${highlightColor}&}${word}`);
+        // Animation pattern: white -> gold (at word start) -> white (at word end)
+        const animationTag = `{\\1c${primaryColor}&\\t(${highlightStartMs},${highlightStartMs},\\1c${highlightColor}&)\\t(${highlightEndMs},${highlightEndMs},\\1c${primaryColor}&)}`;
 
-    // Add next word in white (explicitly set color)
-    if (index < timestamps.length - 1) {
-      words.push(`{\\1c${primaryColor}&}${timestamps[index + 1].word}`);
-    }
+        return `${animationTag}${wordInfo.word}`;
+      })
+      .join(' ');
 
-    const text = words.join(' ');
-
-    // Create dialogue line with no overlap
-    ass += `Dialogue: 0,${startTime},${endTime},Default,,0,0,0,,${text}\n`;
+    ass += `Dialogue: 0,${startTime},${endTime},Default,,0,0,0,,${textWithAnimations}\n`;
   });
 
   return ass;
+}
+
+/**
+ * Segment words into phrases based on timing and max words per segment
+ */
+function segmentWords(
+  timestamps: WordTimestamp[],
+  maxWordsPerSegment: number
+): {
+  startTime: number;
+  endTime: number;
+  words: { word: string; start: number; end: number }[];
+}[] {
+  const segments: {
+    startTime: number;
+    endTime: number;
+    words: { word: string; start: number; end: number }[];
+  }[] = [];
+
+  let currentSegment: { word: string; start: number; end: number }[] = [];
+  let segmentStartTime = 0;
+
+  timestamps.forEach((timestamp, index) => {
+    // Start new segment
+    if (currentSegment.length === 0) {
+      segmentStartTime = timestamp.start;
+    }
+
+    currentSegment.push({
+      word: timestamp.word,
+      start: timestamp.start,
+      end: timestamp.end
+    });
+
+    // Determine if we should close this segment
+    const isLastWord = index === timestamps.length - 1;
+    const segmentFull = currentSegment.length >= maxWordsPerSegment;
+    const nextWordHasGap = !isLastWord && timestamps[index + 1].start - timestamp.end > 0.3; // 300ms gap = natural phrase break
+
+    if (isLastWord || segmentFull || nextWordHasGap) {
+      // Close current segment
+      const lastWord = currentSegment[currentSegment.length - 1];
+      segments.push({
+        startTime: segmentStartTime,
+        endTime: lastWord.end,
+        words: [...currentSegment]
+      });
+
+      currentSegment = [];
+    }
+  });
+
+  return segments;
 }
 
 /**
