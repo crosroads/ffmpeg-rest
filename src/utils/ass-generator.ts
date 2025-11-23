@@ -64,7 +64,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     }
 
     // Add current word - shown in highlight color
-    words.push(`{\\c${highlightColor}}${word}{\\c${primaryColor}}`);
+    // ASS color override syntax: \c&HBBGGRR& (note the trailing &)
+    words.push(`{\\c${highlightColor}&}${word}{\\c${primaryColor}&}`);
 
     // Add next word (if exists) - shown in primary color
     if (index < timestamps.length - 1) {
