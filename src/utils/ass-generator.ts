@@ -53,8 +53,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   // Brainrot style: 2-3 word sliding window with current word highlighted
   timestamps.forEach(({ word, start, end }, index) => {
     const startTime = formatASSTime(start);
-    // Each dialogue shows until next word starts (exact boundary, no gap)
-    const endTime = index < timestamps.length - 1 ? formatASSTime(timestamps[index + 1].start) : formatASSTime(end);
+    // Each dialogue ends 0.01s before next word to prevent ASS renderer overlap
+    const endTime =
+      index < timestamps.length - 1 ? formatASSTime(timestamps[index + 1].start - 0.01) : formatASSTime(end);
 
     // Build text with sliding window
     const words: string[] = [];
