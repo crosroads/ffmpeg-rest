@@ -50,31 +50,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
   // Add dialogue lines with word-by-word highlighting
-  // Show 3-word context window (previous word, current highlighted word, next word)
-  timestamps.forEach(({ word, start, end }, index) => {
+  // Standard brainrot style: show only current word, highlighted
+  timestamps.forEach(({ word, start, end }) => {
     const startTime = formatASSTime(start);
     const endTime = formatASSTime(end);
 
-    // Build the text with context
-    const words: string[] = [];
+    // Show only the current word, highlighted
+    const text = `{\\c${highlightColor}&}${word}{\\c${primaryColor}&}`;
 
-    // Add previous word (if exists) - shown in primary color
-    if (index > 0) {
-      words.push(timestamps[index - 1].word);
-    }
-
-    // Add current word - shown in highlight color
-    // ASS color override syntax: \c&HBBGGRR& (note the trailing &)
-    words.push(`{\\c${highlightColor}&}${word}{\\c${primaryColor}&}`);
-
-    // Add next word (if exists) - shown in primary color
-    if (index < timestamps.length - 1) {
-      words.push(timestamps[index + 1].word);
-    }
-
-    const text = words.join(' ');
-
-    // Create dialogue line without karaoke effect
+    // Create dialogue line - only this word will be visible during this time
     ass += `Dialogue: 0,${startTime},${endTime},Default,,0,0,0,,${text}\n`;
   });
 
