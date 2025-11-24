@@ -16,7 +16,7 @@ export interface ASSGeneratorOptions {
   primaryColor?: string; // Default: white (#FFFFFF)
   highlightColor?: string; // Default: gold (#FFD700)
   outlineColor?: string; // Default: black (#000000)
-  marginBottom?: number; // Default: 300px from bottom
+  marginBottom?: number; // Default: 700px from bottom (middle zone, clears platform UI)
   wordsPerSegment?: number; // Default: 3 (2-3 word phrases)
 }
 
@@ -32,7 +32,7 @@ export function generateASS(timestamps: WordTimestamp[], options: ASSGeneratorOp
   const primaryColor = colorToASS(options.primaryColor || '#FFFFFF');
   const highlightColor = colorToASS(options.highlightColor || '#FFD700');
   const outlineColor = colorToASS(options.outlineColor || '#000000');
-  const marginBottom = options.marginBottom || 300;
+  const marginBottom = options.marginBottom || 700; // Middle zone positioning (Y=1220 on 1920px screen)
   const wordsPerSegment = options.wordsPerSegment || 3;
 
   // ASS file header

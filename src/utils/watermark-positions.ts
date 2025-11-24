@@ -18,10 +18,12 @@ export type WatermarkPosition =
  * Get FFmpeg overlay position string for watermark
  *
  * @param position - Predefined position name
- * @param padding - Padding from edges in pixels (default: 20)
+ * @param padding - Padding from edges in pixels (default: 400 for platform UI clearance)
  * @returns FFmpeg overlay position string (x:y coordinates)
+ *
+ * Note: Default 400px padding ensures watermark clears TikTok UI (320px), Instagram Reels (420px)
  */
-export function getWatermarkPosition(position: WatermarkPosition = 'bottom-center', padding = 20): string {
+export function getWatermarkPosition(position: WatermarkPosition = 'bottom-center', padding = 400): string {
   const positions: Record<WatermarkPosition, string> = {
     'top-left': `${padding}:${padding}`,
     'top-center': `(main_w-overlay_w)/2:${padding}`,

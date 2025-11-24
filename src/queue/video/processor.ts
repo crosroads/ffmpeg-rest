@@ -292,8 +292,8 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     wordTimestamps,
     duration,
     watermarkUrl,
-    watermarkScale = 0.3,
-    watermarkOpacity = 0.7,
+    watermarkScale = 0.35, // 35% of video width (aggressive for viral marketing)
+    watermarkOpacity = 0.85, // 85% opacity (prominent but not obnoxious)
     resolution,
     watermarkPosition,
     fontFamily,
