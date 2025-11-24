@@ -459,8 +459,37 @@ export const composeVideoRoute = createRoute({
               description: 'Video duration in seconds (should match audio duration).',
               example: 80.15
             }),
+            watermarkText: z.string().optional().openapi({
+              description:
+                '**Text-based watermark** (recommended). Dynamically renders text with full font control. Priority over watermarkUrl if both provided. Example: "EasyBrainrot.com"',
+              example: 'EasyBrainrot.com'
+            }),
+            watermarkFontFamily: z.string().optional().openapi({
+              description:
+                'Font family for text watermark. Default: "Liberation-Sans-Bold" (bold, available on Linux). Other options: "Arial-Bold", "DejaVu-Sans-Bold".',
+              example: 'Liberation-Sans-Bold'
+            }),
+            watermarkFontSize: z.number().min(12).max(200).optional().openapi({
+              description:
+                'Font size for text watermark in pixels. Default: 48px. Recommended: 40-60px for 1080x1920 videos.',
+              example: 48
+            }),
+            watermarkFontColor: z.string().optional().openapi({
+              description: 'Font color for text watermark (hex format). Default: "#FFFFFF" (white).',
+              example: '#FFFFFF'
+            }),
+            watermarkBorderWidth: z.number().min(0).max(10).optional().openapi({
+              description:
+                'Border/outline width for text watermark in pixels. Default: 2px (improves readability on varied backgrounds).',
+              example: 2
+            }),
+            watermarkBorderColor: z.string().optional().openapi({
+              description: 'Border/outline color for text watermark (hex format). Default: "#000000" (black).',
+              example: '#000000'
+            }),
             watermarkUrl: z.string().url().optional().openapi({
-              description: 'URL of watermark image (PNG with transparency).',
+              description:
+                '**Image-based watermark** (legacy). URL of watermark image (PNG with transparency). Use watermarkText instead for better control. If both provided, watermarkText takes priority.',
               example: 'https://assets.easybrainrot.com/watermark.png'
             }),
             watermarkScale: z.number().min(0).max(1).default(0.35).optional().openapi({

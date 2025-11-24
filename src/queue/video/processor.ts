@@ -282,6 +282,48 @@ export async function processVideoExtractFrames(job: Job<VideoExtractFramesJobDa
   }
 }
 
+/**
+ * Convert hex color to FFmpeg color format with opacity
+ * @param hexColor - Hex color like "#FFFFFF"
+ * @param opacity - Opacity 0.0-1.0
+ * @returns FFmpeg color string like "0xFFFFFFD9" (RRGGBBAA format)
+ */
+function hexToFFmpegColor(hexColor: string, opacity: number): string {
+  // Remove # if present
+  const hex = hexColor.replace('#', '');
+
+  // FFmpeg uses 0x format with alpha (00 = transparent, FF = opaque)
+  const alphaHex = Math.round(opacity * 255)
+    .toString(16)
+    .padStart(2, '0');
+
+  return `0x${hex}${alphaHex}`;
+}
+
+/**
+ * Get drawtext position coordinates from watermarkPosition
+ * @param position - Position name (e.g., "bottom-center")
+ * @param padding - Padding from edges in pixels (default: 400)
+ * @returns Object with x and y coordinate expressions for FFmpeg drawtext
+ */
+function getDrawtextPosition(position: WatermarkPosition, padding = 400): { x: string; y: string } {
+  const positions: Record<WatermarkPosition, { x: string; y: string }> = {
+    'top-left': { x: `${padding}`, y: `${padding}` },
+    'top-center': { x: '(w-text_w)/2', y: `${padding}` },
+    'top-right': { x: `w-text_w-${padding}`, y: `${padding}` },
+
+    'middle-left': { x: `${padding}`, y: '(h-text_h)/2' },
+    'middle-center': { x: '(w-text_w)/2', y: '(h-text_h)/2' },
+    'middle-right': { x: `w-text_w-${padding}`, y: '(h-text_h)/2' },
+
+    'bottom-left': { x: `${padding}`, y: `h-text_h-${padding}` },
+    'bottom-center': { x: '(w-text_w)/2', y: `h-text_h-${padding}` },
+    'bottom-right': { x: `w-text_w-${padding}`, y: `h-text_h-${padding}` }
+  };
+
+  return positions[position];
+}
+
 export async function processVideoCompose(job: Job<VideoComposeJobData>): Promise<JobResult> {
   const {
     backgroundUrl,
@@ -291,11 +333,21 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     musicVolume = 0.4,
     wordTimestamps,
     duration,
+    // Text watermark (priority)
+    watermarkText,
+    watermarkFontFamily = 'Liberation-Sans-Bold',
+    watermarkFontSize = 48,
+    watermarkFontColor = '#FFFFFF',
+    watermarkBorderWidth = 2,
+    watermarkBorderColor = '#000000',
+    // Image watermark (legacy fallback)
     watermarkUrl,
     watermarkScale = 0.35, // 35% of video width (aggressive for viral marketing)
+    // Common watermark settings
     watermarkOpacity = 0.85, // 85% opacity (prominent but not obnoxious)
     resolution,
     watermarkPosition,
+    // Caption settings
     fontFamily,
     fontSize,
     primaryColor,
@@ -379,8 +431,40 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     // Video processing
     filterComplex += `[0:v]trim=duration=${duration}[bg];`;
 
-    if (watermarkUrl) {
-      // Parse video width for watermark scaling
+    // Determine watermark type: text (priority) or image (fallback)
+    const useTextWatermark = !!watermarkText;
+    const useImageWatermark = !useTextWatermark && !!watermarkUrl;
+
+    if (useTextWatermark) {
+      // TEXT WATERMARK: Use drawtext filter
+      const textPosition = getDrawtextPosition(watermarkPosition as WatermarkPosition);
+      const fontColor = hexToFFmpegColor(watermarkFontColor, watermarkOpacity);
+      const borderColor = hexToFFmpegColor(watermarkBorderColor, watermarkOpacity);
+
+      // Escape text for FFmpeg (escape single quotes and colons)
+      const escapedText = watermarkText.replace(/'/g, "'\\''").replace(/:/g, '\\:');
+
+      // Build drawtext filter
+      // Note: Font file path depends on system. Common paths:
+      // - Liberation Sans Bold: /usr/share/fonts/liberation-sans/LiberationSans-Bold.ttf
+      // - DejaVu Sans Bold: /usr/share/fonts/dejavu/DejaVuSans-Bold.ttf
+      // We'll use font parameter without file path and let FFmpeg find it
+      const drawtextFilter = `drawtext=text='${escapedText}':fontsize=${watermarkFontSize}:fontcolor=${fontColor}:borderw=${watermarkBorderWidth}:bordercolor=${borderColor}:x=${textPosition.x}:y=${textPosition.y}`;
+
+      // Apply drawtext after captions
+      filterComplex += `[bg]ass='${captionsPath.replace(/'/g, "'\\''")}'[captioned];`;
+      filterComplex += `[captioned]${drawtextFilter}[final]`;
+
+      console.log('[VideoCompose] Using text watermark:', {
+        text: watermarkText,
+        font: watermarkFontFamily,
+        size: watermarkFontSize,
+        color: watermarkFontColor,
+        opacity: watermarkOpacity,
+        position: watermarkPosition
+      });
+    } else if (useImageWatermark) {
+      // IMAGE WATERMARK: Use overlay filter (existing logic)
       const [videoWidth] = resolution.split('x').map(Number);
       const scaledWidth = Math.round(videoWidth * watermarkScale);
 
@@ -391,8 +475,17 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
       filterComplex += `[${watermarkInputIndex}:v]scale=${scaledWidth}:-1,format=yuva420p,colorchannelmixer=aa=${watermarkOpacity}[logo];`;
       filterComplex += `[bg][logo]overlay=${watermarkOverlayPos}[watermarked];`;
       filterComplex += `[watermarked]ass='${captionsPath.replace(/'/g, "'\\''")}'[final]`;
+
+      console.log('[VideoCompose] Using image watermark:', {
+        url: watermarkUrl,
+        scale: watermarkScale,
+        opacity: watermarkOpacity,
+        position: watermarkPosition
+      });
     } else {
+      // NO WATERMARK: Just apply captions
       filterComplex += `[bg]ass='${captionsPath.replace(/'/g, "'\\''")}'[final]`;
+      console.log('[VideoCompose] No watermark provided');
     }
 
     // Determine audio source

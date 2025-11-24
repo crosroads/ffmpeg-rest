@@ -39,8 +39,17 @@ export const VideoComposeJobDataSchema = z.object({
     })
   ),
   duration: z.number().min(0),
+  // Text-based watermark (recommended, priority over image)
+  watermarkText: z.string().optional(),
+  watermarkFontFamily: z.string().optional(),
+  watermarkFontSize: z.number().min(12).max(200).optional(),
+  watermarkFontColor: z.string().optional(),
+  watermarkBorderWidth: z.number().min(0).max(10).optional(),
+  watermarkBorderColor: z.string().optional(),
+  // Image-based watermark (legacy, kept for backward compatibility)
   watermarkUrl: z.string().url().optional(),
   watermarkScale: z.number().min(0).max(1).default(0.35).optional(),
+  // Common watermark settings
   watermarkOpacity: z.number().min(0).max(1).default(0.85).optional(),
   resolution: z.string().default('1080x1920'),
   watermarkPosition: z
@@ -56,6 +65,7 @@ export const VideoComposeJobDataSchema = z.object({
       'bottom-right'
     ])
     .default('bottom-center'),
+  // Caption font settings
   fontFamily: z.string().optional(),
   fontSize: z.number().optional(),
   primaryColor: z.string().optional(),
