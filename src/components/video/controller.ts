@@ -352,12 +352,16 @@ export function registerVideoRoutes(app: OpenAPIHono) {
         watermarkFontColor: body.watermarkFontColor,
         watermarkBorderWidth: body.watermarkBorderWidth,
         watermarkBorderColor: body.watermarkBorderColor,
+        watermarkShadowColor: body.watermarkShadowColor,
+        watermarkShadowX: body.watermarkShadowX,
+        watermarkShadowY: body.watermarkShadowY,
         // Image watermark parameters (legacy)
         watermarkUrl: body.watermarkUrl,
         watermarkScale: body.watermarkScale,
         // Common watermark settings
         watermarkOpacity: body.watermarkOpacity,
         watermarkPosition: body.watermarkPosition,
+        watermarkPadding: body.watermarkPadding,
         resolution: body.resolution,
         fontFamily: body.fontFamily,
         fontSize: body.fontSize,

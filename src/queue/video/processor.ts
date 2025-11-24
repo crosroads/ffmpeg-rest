@@ -303,10 +303,10 @@ function hexToFFmpegColor(hexColor: string, opacity: number): string {
 /**
  * Get drawtext position coordinates from watermarkPosition
  * @param position - Position name (e.g., "bottom-center")
- * @param padding - Padding from edges in pixels (default: 400)
+ * @param padding - Padding from edges in pixels (default: 475)
  * @returns Object with x and y coordinate expressions for FFmpeg drawtext
  */
-function getDrawtextPosition(position: WatermarkPosition, padding = 400): { x: string; y: string } {
+function getDrawtextPosition(position: WatermarkPosition, padding = 475): { x: string; y: string } {
   const positions: Record<WatermarkPosition, { x: string; y: string }> = {
     'top-left': { x: `${padding}`, y: `${padding}` },
     'top-center': { x: '(w-text_w)/2', y: `${padding}` },
@@ -340,6 +340,9 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     watermarkFontColor = '#FFFFFF',
     watermarkBorderWidth = 2,
     watermarkBorderColor = '#000000',
+    watermarkShadowColor = '#000000',
+    watermarkShadowX = 2,
+    watermarkShadowY = 2,
     // Image watermark (legacy fallback)
     watermarkUrl,
     watermarkScale = 0.35, // 35% of video width (aggressive for viral marketing)
@@ -347,6 +350,7 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     watermarkOpacity = 0.85, // 85% opacity (prominent but not obnoxious)
     resolution,
     watermarkPosition,
+    watermarkPadding = 475,
     // Caption settings
     fontFamily,
     fontSize,
@@ -437,9 +441,10 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
 
     if (useTextWatermark) {
       // TEXT WATERMARK: Use drawtext filter
-      const textPosition = getDrawtextPosition(watermarkPosition as WatermarkPosition);
+      const textPosition = getDrawtextPosition(watermarkPosition as WatermarkPosition, watermarkPadding);
       const fontColor = hexToFFmpegColor(watermarkFontColor, watermarkOpacity);
       const borderColor = hexToFFmpegColor(watermarkBorderColor, watermarkOpacity);
+      const shadowColor = hexToFFmpegColor(watermarkShadowColor, watermarkOpacity);
 
       // Escape text for FFmpeg (escape single quotes and colons)
       const escapedText = watermarkText.replace(/'/g, "'\\''").replace(/:/g, '\\:');
@@ -463,7 +468,7 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
       }
 
       // Use fontfile parameter with fontconfig syntax (colons need to be escaped)
-      const drawtextFilter = `drawtext=fontfile='${fontFamily}\\:style=${fontStyle}':text='${escapedText}':fontsize=${watermarkFontSize}:fontcolor=${fontColor}:borderw=${watermarkBorderWidth}:bordercolor=${borderColor}:x=${textPosition.x}:y=${textPosition.y}`;
+      const drawtextFilter = `drawtext=fontfile='${fontFamily}\\:style=${fontStyle}':text='${escapedText}':fontsize=${watermarkFontSize}:fontcolor=${fontColor}:borderw=${watermarkBorderWidth}:bordercolor=${borderColor}:shadowcolor=${shadowColor}:shadowx=${watermarkShadowX}:shadowy=${watermarkShadowY}:x=${textPosition.x}:y=${textPosition.y}`;
 
       console.log('[VideoCompose] Drawtext filter:', drawtextFilter);
 

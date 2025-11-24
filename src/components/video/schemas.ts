@@ -487,6 +487,21 @@ export const composeVideoRoute = createRoute({
               description: 'Border/outline color for text watermark (hex format). Default: "#000000" (black).',
               example: '#000000'
             }),
+            watermarkShadowColor: z.string().optional().openapi({
+              description:
+                'Shadow color for text watermark (hex format). Default: "#000000" (black). Adds depth and improves visibility on light backgrounds.',
+              example: '#000000'
+            }),
+            watermarkShadowX: z.number().min(-20).max(20).optional().openapi({
+              description:
+                'Horizontal shadow offset in pixels. Positive = right, negative = left. Default: 2. Range: -20 to 20.',
+              example: 2
+            }),
+            watermarkShadowY: z.number().min(-20).max(20).optional().openapi({
+              description:
+                'Vertical shadow offset in pixels. Positive = down, negative = up. Default: 2. Range: -20 to 20.',
+              example: 2
+            }),
             watermarkUrl: z.string().url().optional().openapi({
               description:
                 '**Image-based watermark** (legacy). URL of watermark image (PNG with transparency). Use watermarkText instead for better control. If both provided, watermarkText takes priority.',
@@ -523,6 +538,11 @@ export const composeVideoRoute = createRoute({
                 description: 'Watermark position on video.',
                 example: 'bottom-center'
               }),
+            watermarkPadding: z.number().min(0).max(1000).default(475).optional().openapi({
+              description:
+                'Padding from video edge for watermark position in pixels. Default: 475px (optimized for caption separation). Range: 0-1000.',
+              example: 475
+            }),
             fontFamily: z.string().optional().openapi({
               description: 'Caption font family.',
               example: 'Arial Black'
