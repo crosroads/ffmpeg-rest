@@ -66,6 +66,7 @@ Authorization: Bearer <token>  (if BEARER_TOKENS configured)
 | `fontSize` | number | ❌ No | `80` | Caption font size in pixels. |
 | `primaryColor` | string | ❌ No | `"#FFFFFF"` | Caption text color (hex format) - color of unspoken words. |
 | `highlightColor` | string | ❌ No | `"#FFD700"` | **Caption highlight color (hex format) - words transition to this color as they're spoken** (karaoke effect). |
+| `marginBottom` | number | ❌ No | `700` | **Caption vertical position** - distance from bottom edge in pixels (0-2000). Higher values move caption UP toward center. Default: 700px. Recommended: 960px for 50% positioning with optimal spacing from watermark. |
 | `musicUrl` | string (URL) | ❌ No | - | **URL of background music** (MP3/WAV). Will be mixed with TTS audio at specified volume. Music loops if shorter than video duration. |
 | `musicVolume` | number | ❌ No | `0.4` | **Background music volume** (0.0-1.0). TTS narration is always at 100%. Default: 0.4 (40%, -8dB). Recommended: 0.2-0.6 depending on content energy. |
 
@@ -122,7 +123,8 @@ Content-Type: application/json
   "fontFamily": "Arial Black",
   "fontSize": 200,
   "primaryColor": "#FFFFFF",
-  "highlightColor": "#FFD700"
+  "highlightColor": "#FFD700",
+  "marginBottom": 960
 }
 ```
 
