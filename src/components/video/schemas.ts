@@ -559,6 +559,11 @@ export const composeVideoRoute = createRoute({
               description:
                 'Caption highlight color (hex format) - words transition to this color as they are spoken (karaoke effect).',
               example: '#FFD700'
+            }),
+            marginBottom: z.number().min(0).max(2000).optional().openapi({
+              description:
+                'Caption vertical position - distance from bottom edge in pixels (0-2000). Default: 700px (middle zone). Higher values move caption UP toward center. Recommended: 960px for 50% positioning with optimal spacing from watermark.',
+              example: 960
             })
           })
         }

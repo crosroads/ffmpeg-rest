@@ -73,7 +73,8 @@ export const VideoComposeJobDataSchema = z.object({
   fontFamily: z.string().optional(),
   fontSize: z.number().optional(),
   primaryColor: z.string().optional(),
-  highlightColor: z.string().optional()
+  highlightColor: z.string().optional(),
+  marginBottom: z.number().min(0).max(2000).optional() // Caption vertical position (distance from bottom edge in pixels)
 });
 
 export type VideoToMp4JobData = z.infer<typeof VideoToMp4JobDataSchema>;

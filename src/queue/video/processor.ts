@@ -355,7 +355,8 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     fontFamily,
     fontSize,
     primaryColor,
-    highlightColor
+    highlightColor,
+    marginBottom
   } = job.data;
 
   const jobDir = path.join(env.TEMP_DIR, job.id);
@@ -376,7 +377,8 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
       fontFamily,
       fontSize,
       primaryColor,
-      highlightColor
+      highlightColor,
+      marginBottom
     });
     console.log('[VideoCompose] Generated ASS content:');
     console.log(assContent);
