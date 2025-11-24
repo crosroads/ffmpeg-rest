@@ -434,8 +434,9 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
       filterComplex += `[tts][music]amix=inputs=2:duration=first[audio];`;
     }
 
-    // Video processing
-    filterComplex += `[0:v]trim=duration=${duration}[bg];`;
+    // Video processing - Scale to target height, crop to target width, then trim
+    const [targetWidth, targetHeight] = resolution.split('x').map(Number);
+    filterComplex += `[0:v]scale=-1:${targetHeight},crop=${targetWidth}:${targetHeight},trim=duration=${duration}[bg];`;
 
     // Determine watermark type: text (priority) or image (fallback)
     const useTextWatermark = !!watermarkText;
