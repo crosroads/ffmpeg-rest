@@ -45,6 +45,8 @@ Authorization: Bearer <token>  (if BEARER_TOKENS configured)
 | `wordTimestamps` | array | ✅ Yes | - | **Array of word-level timestamps for karaoke captions** (required for highlighting effect). |
 | `duration` | number | ✅ Yes | - | Video duration in seconds (should match audio duration). |
 | `watermarkUrl` | string (URL) | ❌ No | - | URL of watermark image (PNG with transparency). |
+| `watermarkScale` | number | ❌ No | `0.30` | **Watermark scale relative to video width** (0.0-1.0). Default: 0.30 (30% of video width). Recommended: 0.25-0.35 for subtle branding. |
+| `watermarkOpacity` | number | ❌ No | `0.7` | **Watermark opacity/transparency** (0.0-1.0). Default: 0.7 (70%, semi-transparent). Recommended: 0.6-0.8 for professional subtle branding. |
 | `resolution` | string | ❌ No | `"1080x1920"` | Output video resolution (WIDTHxHEIGHT). |
 | `watermarkPosition` | string | ❌ No | `"bottom-center"` | Watermark position (see options below). |
 | `fontFamily` | string | ❌ No | `"Arial Black"` | Caption font family. |
@@ -93,6 +95,8 @@ Content-Type: application/json
   ],
   "duration": 80.15,
   "watermarkUrl": "https://assets.easybrainrot.com/watermark.png",
+  "watermarkScale": 0.30,
+  "watermarkOpacity": 0.7,
   "resolution": "1080x1920",
   "watermarkPosition": "bottom-center",
   "fontFamily": "Arial Black",
@@ -393,6 +397,8 @@ interface VideoCompositionRequest {
   watermarkUrl?: string;
   resolution?: string;
   watermarkPosition?: string;
+  watermarkScale?: number;
+  watermarkOpacity?: number;
   fontFamily?: string;
   fontSize?: number;
   primaryColor?: string;
@@ -570,6 +576,150 @@ print(f"Video URL: {result['url']}")
   "highlightColor": "#FF6B6B"
 }
 ```
+
+---
+
+## 🎨 Watermark Customization Guide
+
+### Overview
+
+The video composition endpoint supports dynamic watermark scaling and opacity control, allowing you to adjust watermark prominence without regenerating image files.
+
+**Key Parameters:**
+- `watermarkScale`: Size relative to video width (0.0-1.0)
+- `watermarkOpacity`: Transparency level (0.0-1.0)
+- `watermarkPosition`: Placement on video (9 positions available)
+
+### Scale Configuration
+
+**watermarkScale** controls watermark size as a percentage of video width:
+
+| Value | Size | Description | Best For |
+|-------|------|-------------|----------|
+| `0.25` | 25% | Minimal | Very subtle branding, podcast clips |
+| **`0.30`** | **30%** | **Balanced (Default)** | **Professional subtle branding, brainrot videos** |
+| `0.35` | 35% | Noticeable | Stronger branding presence |
+| `0.40` | 40% | Prominent | High visibility, educational content |
+| `0.50` | 50% | Large | Maximum branding (may distract) |
+
+**Example:**
+```json
+{
+  "watermarkUrl": "https://example.com/logo.png",
+  "watermarkScale": 0.30,  // 324px wide at 1080x1920 resolution
+  "resolution": "1080x1920"
+}
+```
+
+**Resolution Impact:**
+```
+1080x1920 (vertical):  0.30 scale = 324px watermark width
+1920x1080 (horizontal): 0.30 scale = 576px watermark width
+1080x1080 (square):    0.30 scale = 324px watermark width
+```
+
+### Opacity Configuration
+
+**watermarkOpacity** controls transparency (0.0 = invisible, 1.0 = fully opaque):
+
+| Value | Opacity | Description | Best For |
+|-------|---------|-------------|----------|
+| `0.5` | 50% | Very subtle | Minimal distraction |
+| `0.6` | 60% | Subtle | Light branding |
+| **`0.7`** | **70%** | **Semi-transparent (Default)** | **Professional standard** |
+| `0.8` | 80% | Noticeable | Strong branding |
+| `1.0` | 100% | Fully opaque | Maximum visibility |
+
+**Industry Standards:**
+- **Brainrot/TikTok**: 0.6-0.7 (subtle, doesn't compete with captions)
+- **YouTube**: 0.7-0.8 (slightly more visible)
+- **Corporate/Professional**: 0.7 (balanced visibility)
+- **Minimal Branding**: 0.5-0.6 (very subtle)
+
+### Position Options
+
+Combine scale/opacity with position for optimal placement:
+
+**Bottom Positions** (recommended for brainrot/vertical videos):
+```json
+{
+  "watermarkPosition": "bottom-center",  // Centered, safe zone
+  "watermarkScale": 0.30,
+  "watermarkOpacity": 0.7
+}
+```
+
+**Top/Corner Positions** (for horizontal/educational videos):
+```json
+{
+  "watermarkPosition": "top-right",     // Classic corner placement
+  "watermarkScale": 0.25,              // Smaller for less obstruction
+  "watermarkOpacity": 0.8              // Slightly more visible
+}
+```
+
+### Usage Examples
+
+**Subtle Brainrot Watermark (Recommended):**
+```json
+{
+  "watermarkUrl": "https://assets.easybrainrot.com/watermark.png",
+  "watermarkScale": 0.30,
+  "watermarkOpacity": 0.7,
+  "watermarkPosition": "bottom-center"
+}
+```
+
+**Minimal Watermark (Very Subtle):**
+```json
+{
+  "watermarkUrl": "https://assets.easybrainrot.com/watermark.png",
+  "watermarkScale": 0.25,
+  "watermarkOpacity": 0.6,
+  "watermarkPosition": "bottom-right"
+}
+```
+
+**Prominent Watermark (High Visibility):**
+```json
+{
+  "watermarkUrl": "https://assets.easybrainrot.com/watermark.png",
+  "watermarkScale": 0.40,
+  "watermarkOpacity": 0.9,
+  "watermarkPosition": "top-right"
+}
+```
+
+### Best Practices
+
+1. **Start with defaults** (scale: 0.30, opacity: 0.7) and adjust based on visual testing
+2. **Vertical videos** (9:16): Use smaller scales (0.25-0.35) to preserve caption space
+3. **Horizontal videos** (16:9): Can use larger scales (0.30-0.40) with more room
+4. **High-energy content**: Lower opacity (0.6-0.7) to avoid distraction
+5. **Professional/corporate**: Higher opacity (0.7-0.8) for brand visibility
+6. **Test on mobile**: Most viewers watch on phones - ensure readability on small screens
+7. **Contrast matters**: Use opacity to balance watermark visibility against varied backgrounds
+
+### FFmpeg Implementation
+
+The watermark overlay is achieved using FFmpeg's `scale` and `format` filters:
+
+```bash
+ffmpeg \
+  -i background.mp4 \
+  -i watermark.png \
+  -filter_complex "
+    [1:v]scale=iw*0.30:-1,format=yuva420p,colorchannelmixer=aa=0.7[logo];
+    [0:v][logo]overlay=x=(W-w)/2:y=H-h-50[watermarked]
+  " \
+  output.mp4
+```
+
+**Breakdown:**
+- `scale=iw*0.30:-1`: Scale watermark to 30% of input width, maintain aspect ratio
+- `format=yuva420p`: Enable alpha channel for transparency
+- `colorchannelmixer=aa=0.7`: Set opacity to 70%
+- `overlay=...`: Position watermark (bottom-center with 50px padding)
 
 ---
 

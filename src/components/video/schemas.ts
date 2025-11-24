@@ -463,6 +463,16 @@ export const composeVideoRoute = createRoute({
               description: 'URL of watermark image (PNG with transparency).',
               example: 'https://assets.easybrainrot.com/watermark.png'
             }),
+            watermarkScale: z.number().min(0).max(1).default(0.3).optional().openapi({
+              description:
+                'Watermark scale relative to video width (0.0-1.0). Default: 0.30 (30% of video width). Recommended: 0.25-0.35 for subtle branding.',
+              example: 0.3
+            }),
+            watermarkOpacity: z.number().min(0).max(1).default(0.7).optional().openapi({
+              description:
+                'Watermark opacity/transparency (0.0-1.0). Default: 0.7 (70%, semi-transparent). Recommended: 0.6-0.8 for professional subtle branding.',
+              example: 0.7
+            }),
             resolution: z.string().default('1080x1920').openapi({
               description: 'Output video resolution (WIDTHxHEIGHT).',
               example: '1080x1920'

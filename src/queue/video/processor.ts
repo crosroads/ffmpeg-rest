@@ -292,6 +292,8 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     wordTimestamps,
     duration,
     watermarkUrl,
+    watermarkScale = 0.3,
+    watermarkOpacity = 0.7,
     resolution,
     watermarkPosition,
     fontFamily,
@@ -378,7 +380,16 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     filterComplex += `[0:v]trim=duration=${duration}[bg];`;
 
     if (watermarkUrl) {
-      filterComplex += `[bg][${watermarkInputIndex}:v]overlay=${watermarkOverlayPos}[watermarked];`;
+      // Parse video width for watermark scaling
+      const [videoWidth] = resolution.split('x').map(Number);
+      const scaledWidth = Math.round(videoWidth * watermarkScale);
+
+      // Apply watermark scaling and opacity:
+      // 1. Scale watermark to specified percentage of video width, maintain aspect ratio
+      // 2. Convert to yuva420p format (enables alpha channel for transparency)
+      // 3. Apply opacity using colorchannelmixer (aa = alpha adjustment)
+      filterComplex += `[${watermarkInputIndex}:v]scale=${scaledWidth}:-1,format=yuva420p,colorchannelmixer=aa=${watermarkOpacity}[logo];`;
+      filterComplex += `[bg][logo]overlay=${watermarkOverlayPos}[watermarked];`;
       filterComplex += `[watermarked]ass='${captionsPath.replace(/'/g, "'\\''")}'[final]`;
     } else {
       filterComplex += `[bg]ass='${captionsPath.replace(/'/g, "'\\''")}'[final]`;

@@ -40,6 +40,8 @@ export const VideoComposeJobDataSchema = z.object({
   ),
   duration: z.number().min(0),
   watermarkUrl: z.string().url().optional(),
+  watermarkScale: z.number().min(0).max(1).default(0.3).optional(),
+  watermarkOpacity: z.number().min(0).max(1).default(0.7).optional(),
   resolution: z.string().default('1080x1920'),
   watermarkPosition: z
     .enum([
