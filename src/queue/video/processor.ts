@@ -467,9 +467,14 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
 
       console.log('[VideoCompose] Drawtext filter:', drawtextFilter);
 
-      // Apply drawtext after captions
-      filterComplex += `[bg]ass='${captionsPath.replace(/'/g, "'\\''")}'[captioned];`;
-      filterComplex += `[captioned]${drawtextFilter}[final]`;
+      // Apply drawtext after captions (if captions exist)
+      if (wordTimestamps.length > 0) {
+        filterComplex += `[bg]ass='${captionsPath.replace(/'/g, "'\\''")}'[captioned];`;
+        filterComplex += `[captioned]${drawtextFilter}[final]`;
+      } else {
+        // No captions, apply watermark directly to background
+        filterComplex += `[bg]${drawtextFilter}[final]`;
+      }
 
       console.log('[VideoCompose] Using text watermark:', {
         text: watermarkText,
