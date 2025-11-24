@@ -324,24 +324,6 @@ function getDrawtextPosition(position: WatermarkPosition, padding = 400): { x: s
   return positions[position];
 }
 
-/**
- * Get font file path from font family name
- * @param fontFamily - Font family name (e.g., "Liberation-Sans-Bold")
- * @returns Font file path on Linux system
- */
-function getFontFilePath(fontFamily: string): string {
-  const fontPaths: Record<string, string> = {
-    'Liberation-Sans-Bold': '/usr/share/fonts/liberation-sans/LiberationSans-Bold.ttf',
-    'Liberation-Sans': '/usr/share/fonts/liberation-sans/LiberationSans-Regular.ttf',
-    'DejaVu-Sans-Bold': '/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf',
-    'DejaVu-Sans': '/usr/share/fonts/dejavu/DejaVuSans.ttf',
-    'Arial-Bold': '/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf',
-    Arial: '/usr/share/fonts/truetype/msttcorefonts/Arial.ttf'
-  };
-
-  return fontPaths[fontFamily] || fontPaths['Liberation-Sans-Bold'];
-}
-
 export async function processVideoCompose(job: Job<VideoComposeJobData>): Promise<JobResult> {
   const {
     backgroundUrl,
@@ -462,9 +444,10 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
       // Escape text for FFmpeg (escape single quotes and colons)
       const escapedText = watermarkText.replace(/'/g, "'\\''").replace(/:/g, '\\:');
 
-      // Build drawtext filter with font file path
-      const fontFile = getFontFilePath(watermarkFontFamily);
-      const drawtextFilter = `drawtext=fontfile='${fontFile}':text='${escapedText}':fontsize=${watermarkFontSize}:fontcolor=${fontColor}:borderw=${watermarkBorderWidth}:bordercolor=${borderColor}:x=${textPosition.x}:y=${textPosition.y}`;
+      // Build drawtext filter with font parameter (uses fontconfig to find font)
+      // Map font family names to fontconfig names
+      const fontName = watermarkFontFamily.replace('-', ' '); // "Liberation-Sans-Bold" -> "Liberation Sans Bold"
+      const drawtextFilter = `drawtext=font='${fontName}':text='${escapedText}':fontsize=${watermarkFontSize}:fontcolor=${fontColor}:borderw=${watermarkBorderWidth}:bordercolor=${borderColor}:x=${textPosition.x}:y=${textPosition.y}`;
 
       // Apply drawtext after captions
       filterComplex += `[bg]ass='${captionsPath.replace(/'/g, "'\\''")}'[captioned];`;
