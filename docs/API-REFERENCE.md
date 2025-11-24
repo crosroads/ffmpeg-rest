@@ -44,11 +44,24 @@ Authorization: Bearer <token>  (if BEARER_TOKENS configured)
 | `audioUrl` | string (URL) | ✅ Yes | - | URL of audio file (MP3/WAV). |
 | `wordTimestamps` | array | ✅ Yes | - | **Array of word-level timestamps for karaoke captions** (required for highlighting effect). |
 | `duration` | number | ✅ Yes | - | Video duration in seconds (should match audio duration). |
-| `watermarkUrl` | string (URL) | ❌ No | - | URL of watermark image (PNG with transparency). |
-| `watermarkScale` | number | ❌ No | `0.35` | **Watermark scale relative to video width** (0.0-1.0). Default: 0.35 (35%, aggressive branding). Recommended: 0.30-0.40 for viral marketing balance. |
-| `watermarkOpacity` | number | ❌ No | `0.85` | **Watermark opacity/transparency** (0.0-1.0). Default: 0.85 (85%, prominent). Recommended: 0.80-0.90 for maximum brand recall while maintaining creator acceptance. |
-| `resolution` | string | ❌ No | `"1080x1920"` | Output video resolution (WIDTHxHEIGHT). |
+| **Text Watermark (Recommended)** | | | | |
+| `watermarkText` | string | ❌ No | - | **Text-based watermark** (e.g., "EasyBrainrot.com"). Dynamically renders text with full font control. Priority over image watermark if both provided. |
+| `watermarkFontFamily` | string | ❌ No | `"Liberation-Sans-Bold"` | Font family for text watermark. Format: "Family-Name-Style". Available: Liberation Sans/Serif/Mono, DejaVu Sans/Serif/Mono (Bold, Italic variations). |
+| `watermarkFontSize` | number | ❌ No | `48` | Font size for text watermark in pixels (12-200). Recommended: 30-50px for 1080x1920 videos. |
+| `watermarkFontColor` | string | ❌ No | `"#FFFFFF"` | Font color for text watermark (hex format). |
+| `watermarkBorderWidth` | number | ❌ No | `2` | Border/outline width for text watermark in pixels (0-10). Improves readability on varied backgrounds. |
+| `watermarkBorderColor` | string | ❌ No | `"#000000"` | Border/outline color for text watermark (hex format). |
+| `watermarkShadowColor` | string | ❌ No | `"#000000"` | **Shadow color for text watermark** (hex format). Adds depth and improves visibility on light backgrounds. |
+| `watermarkShadowX` | number | ❌ No | `2` | **Horizontal shadow offset** in pixels (-20 to 20). Positive = right, negative = left. |
+| `watermarkShadowY` | number | ❌ No | `2` | **Vertical shadow offset** in pixels (-20 to 20). Positive = down, negative = up. |
+| **Image Watermark (Legacy)** | | | | |
+| `watermarkUrl` | string (URL) | ❌ No | - | URL of watermark image (PNG with transparency). Use `watermarkText` instead for better control. |
+| `watermarkScale` | number | ❌ No | `0.35` | Watermark scale relative to video width (0.0-1.0) for image watermarks. |
+| **Common Watermark Settings** | | | | |
+| `watermarkOpacity` | number | ❌ No | `0.85` | **Watermark opacity/transparency** (0.0-1.0). Default: 0.85 (85%). Applies to both text and image watermarks. |
 | `watermarkPosition` | string | ❌ No | `"bottom-center"` | Watermark position (see options below). |
+| `watermarkPadding` | number | ❌ No | `475` | **Padding from video edge** for watermark position in pixels (0-1000). Default: 475px (optimized for caption separation). |
+| `resolution` | string | ❌ No | `"1080x1920"` | Output video resolution (WIDTHxHEIGHT). |
 | `fontFamily` | string | ❌ No | `"Arial Black"` | Caption font family. |
 | `fontSize` | number | ❌ No | `80` | Caption font size in pixels. |
 | `primaryColor` | string | ❌ No | `"#FFFFFF"` | Caption text color (hex format) - color of unspoken words. |
@@ -94,11 +107,18 @@ Content-Type: application/json
     { "word": "ever", "start": 1.7, "end": 2.0 }
   ],
   "duration": 80.15,
-  "watermarkUrl": "https://assets.easybrainrot.com/watermark.png",
-  "watermarkScale": 0.35,
+  "watermarkText": "EasyBrainrot.com",
+  "watermarkFontSize": 33,
+  "watermarkFontColor": "#FFD700",
+  "watermarkBorderWidth": 2,
+  "watermarkBorderColor": "#000000",
+  "watermarkShadowColor": "#000000",
+  "watermarkShadowX": 2,
+  "watermarkShadowY": 2,
   "watermarkOpacity": 0.85,
-  "resolution": "1080x1920",
   "watermarkPosition": "bottom-center",
+  "watermarkPadding": 475,
+  "resolution": "1080x1920",
   "fontFamily": "Arial Black",
   "fontSize": 200,
   "primaryColor": "#FFFFFF",
