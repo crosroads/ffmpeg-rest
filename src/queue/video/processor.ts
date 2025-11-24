@@ -465,6 +465,8 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
       // Use fontfile parameter with fontconfig syntax (colons need to be escaped)
       const drawtextFilter = `drawtext=fontfile='${fontFamily}\\:style=${fontStyle}':text='${escapedText}':fontsize=${watermarkFontSize}:fontcolor=${fontColor}:borderw=${watermarkBorderWidth}:bordercolor=${borderColor}:x=${textPosition.x}:y=${textPosition.y}`;
 
+      console.log('[VideoCompose] Drawtext filter:', drawtextFilter);
+
       // Apply drawtext after captions
       filterComplex += `[bg]ass='${captionsPath.replace(/'/g, "'\\''")}'[captioned];`;
       filterComplex += `[captioned]${drawtextFilter}[final]`;
