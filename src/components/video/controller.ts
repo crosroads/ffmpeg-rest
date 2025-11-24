@@ -332,7 +332,8 @@ export function registerVideoRoutes(app: OpenAPIHono) {
         duration: body.duration,
         wordCount: body.wordTimestamps.length,
         resolution: body.resolution,
-        hasWatermark: !!body.watermarkUrl
+        hasWatermark: !!body.watermarkUrl || !!body.watermarkText,
+        watermarkType: body.watermarkText ? 'text' : body.watermarkUrl ? 'image' : 'none'
       });
 
       // Queue the job
@@ -344,9 +345,20 @@ export function registerVideoRoutes(app: OpenAPIHono) {
         musicVolume: body.musicVolume,
         wordTimestamps: body.wordTimestamps,
         duration: body.duration,
+        // Text watermark parameters (recommended)
+        watermarkText: body.watermarkText,
+        watermarkFontFamily: body.watermarkFontFamily,
+        watermarkFontSize: body.watermarkFontSize,
+        watermarkFontColor: body.watermarkFontColor,
+        watermarkBorderWidth: body.watermarkBorderWidth,
+        watermarkBorderColor: body.watermarkBorderColor,
+        // Image watermark parameters (legacy)
         watermarkUrl: body.watermarkUrl,
-        resolution: body.resolution,
+        watermarkScale: body.watermarkScale,
+        // Common watermark settings
+        watermarkOpacity: body.watermarkOpacity,
         watermarkPosition: body.watermarkPosition,
+        resolution: body.resolution,
         fontFamily: body.fontFamily,
         fontSize: body.fontSize,
         primaryColor: body.primaryColor,
