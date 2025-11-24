@@ -45,8 +45,8 @@ Authorization: Bearer <token>  (if BEARER_TOKENS configured)
 | `wordTimestamps` | array | ✅ Yes | - | **Array of word-level timestamps for karaoke captions** (required for highlighting effect). |
 | `duration` | number | ✅ Yes | - | Video duration in seconds (should match audio duration). |
 | `watermarkUrl` | string (URL) | ❌ No | - | URL of watermark image (PNG with transparency). |
-| `watermarkScale` | number | ❌ No | `0.30` | **Watermark scale relative to video width** (0.0-1.0). Default: 0.30 (30% of video width). Recommended: 0.25-0.35 for subtle branding. |
-| `watermarkOpacity` | number | ❌ No | `0.7` | **Watermark opacity/transparency** (0.0-1.0). Default: 0.7 (70%, semi-transparent). Recommended: 0.6-0.8 for professional subtle branding. |
+| `watermarkScale` | number | ❌ No | `0.35` | **Watermark scale relative to video width** (0.0-1.0). Default: 0.35 (35%, aggressive branding). Recommended: 0.30-0.40 for viral marketing balance. |
+| `watermarkOpacity` | number | ❌ No | `0.85` | **Watermark opacity/transparency** (0.0-1.0). Default: 0.85 (85%, prominent). Recommended: 0.80-0.90 for maximum brand recall while maintaining creator acceptance. |
 | `resolution` | string | ❌ No | `"1080x1920"` | Output video resolution (WIDTHxHEIGHT). |
 | `watermarkPosition` | string | ❌ No | `"bottom-center"` | Watermark position (see options below). |
 | `fontFamily` | string | ❌ No | `"Arial Black"` | Caption font family. |
@@ -95,12 +95,12 @@ Content-Type: application/json
   ],
   "duration": 80.15,
   "watermarkUrl": "https://assets.easybrainrot.com/watermark.png",
-  "watermarkScale": 0.30,
-  "watermarkOpacity": 0.7,
+  "watermarkScale": 0.35,
+  "watermarkOpacity": 0.85,
   "resolution": "1080x1920",
   "watermarkPosition": "bottom-center",
   "fontFamily": "Arial Black",
-  "fontSize": 80,
+  "fontSize": 200,
   "primaryColor": "#FFFFFF",
   "highlightColor": "#FFD700"
 }
@@ -597,8 +597,8 @@ The video composition endpoint supports dynamic watermark scaling and opacity co
 | Value | Size | Description | Best For |
 |-------|------|-------------|----------|
 | `0.25` | 25% | Minimal | Very subtle branding, podcast clips |
-| **`0.30`** | **30%** | **Balanced (Default)** | **Professional subtle branding, brainrot videos** |
-| `0.35` | 35% | Noticeable | Stronger branding presence |
+| `0.30` | 30% | Subtle | Professional subtle branding |
+| **`0.35`** | **35%** | **Aggressive (Default)** | **Viral marketing, brainrot videos, maximum brand recall** |
 | `0.40` | 40% | Prominent | High visibility, educational content |
 | `0.50` | 50% | Large | Maximum branding (may distract) |
 
@@ -626,12 +626,13 @@ The video composition endpoint supports dynamic watermark scaling and opacity co
 |-------|---------|-------------|----------|
 | `0.5` | 50% | Very subtle | Minimal distraction |
 | `0.6` | 60% | Subtle | Light branding |
-| **`0.7`** | **70%** | **Semi-transparent (Default)** | **Professional standard** |
+| `0.7` | 70% | Semi-transparent | Professional subtle branding |
 | `0.8` | 80% | Noticeable | Strong branding |
-| `1.0` | 100% | Fully opaque | Maximum visibility |
+| **`0.85`** | **85%** | **Prominent (Default)** | **Viral marketing, maximum brand recall while maintaining acceptance** |
+| `1.0` | 100% | Fully opaque | Maximum visibility (may be too aggressive) |
 
 **Industry Standards:**
-- **Brainrot/TikTok**: 0.6-0.7 (subtle, doesn't compete with captions)
+- **Viral Marketing/Brainrot**: 0.80-0.90 (prominent, drives 3.0x viral coefficient - HeyGen case study)
 - **YouTube**: 0.7-0.8 (slightly more visible)
 - **Corporate/Professional**: 0.7 (balanced visibility)
 - **Minimal Branding**: 0.5-0.6 (very subtle)
@@ -643,11 +644,16 @@ Combine scale/opacity with position for optimal placement:
 **Bottom Positions** (recommended for brainrot/vertical videos):
 ```json
 {
-  "watermarkPosition": "bottom-center",  // Centered, safe zone
-  "watermarkScale": 0.30,
-  "watermarkOpacity": 0.7
+  "watermarkPosition": "bottom-center",  // Centered, 400px from bottom (clears TikTok UI at 320px)
+  "watermarkScale": 0.35,               // Aggressive viral marketing
+  "watermarkOpacity": 0.85              // Prominent brand recall
 }
 ```
+
+**Note:** Default padding is 400px from bottom edge, ensuring watermark clears platform UI zones:
+- TikTok: 320px from bottom
+- Instagram Reels: 420px from bottom (may have minor overlap)
+- YouTube Shorts: 270px from bottom
 
 **Top/Corner Positions** (for horizontal/educational videos):
 ```json
@@ -660,12 +666,23 @@ Combine scale/opacity with position for optimal placement:
 
 ### Usage Examples
 
-**Subtle Brainrot Watermark (Recommended):**
+**Aggressive Viral Marketing (Default, Recommended for Brainrot):**
 ```json
 {
   "watermarkUrl": "https://assets.easybrainrot.com/watermark.png",
-  "watermarkScale": 0.30,
-  "watermarkOpacity": 0.7,
+  "watermarkScale": 0.35,          // 35% width - prominent but not obnoxious
+  "watermarkOpacity": 0.85,        // 85% opacity - strong brand recall
+  "watermarkPosition": "bottom-center"  // 400px from bottom, clears TikTok UI
+}
+```
+*Research-backed for 3.0x viral coefficient while maintaining 5-10% freemium conversion*
+
+**Subtle Professional Branding:**
+```json
+{
+  "watermarkUrl": "https://assets.easybrainrot.com/watermark.png",
+  "watermarkScale": 0.30,          // 30% width - balanced
+  "watermarkOpacity": 0.70,        // 70% opacity - semi-transparent
   "watermarkPosition": "bottom-center"
 }
 ```
@@ -674,31 +691,39 @@ Combine scale/opacity with position for optimal placement:
 ```json
 {
   "watermarkUrl": "https://assets.easybrainrot.com/watermark.png",
-  "watermarkScale": 0.25,
-  "watermarkOpacity": 0.6,
+  "watermarkScale": 0.25,          // 25% width - small
+  "watermarkOpacity": 0.60,        // 60% opacity - very subtle
   "watermarkPosition": "bottom-right"
 }
 ```
 
-**Prominent Watermark (High Visibility):**
+**Maximum Visibility (Educational/Corporate):**
 ```json
 {
   "watermarkUrl": "https://assets.easybrainrot.com/watermark.png",
-  "watermarkScale": 0.40,
-  "watermarkOpacity": 0.9,
+  "watermarkScale": 0.40,          // 40% width - large
+  "watermarkOpacity": 0.90,        // 90% opacity - highly visible
   "watermarkPosition": "top-right"
 }
 ```
 
 ### Best Practices
 
-1. **Start with defaults** (scale: 0.30, opacity: 0.7) and adjust based on visual testing
-2. **Vertical videos** (9:16): Use smaller scales (0.25-0.35) to preserve caption space
-3. **Horizontal videos** (16:9): Can use larger scales (0.30-0.40) with more room
-4. **High-energy content**: Lower opacity (0.6-0.7) to avoid distraction
-5. **Professional/corporate**: Higher opacity (0.7-0.8) for brand visibility
-6. **Test on mobile**: Most viewers watch on phones - ensure readability on small screens
-7. **Contrast matters**: Use opacity to balance watermark visibility against varied backgrounds
+1. **Start with aggressive defaults** (scale: 0.35, opacity: 0.85) for viral marketing, reduce if user feedback indicates resistance
+2. **Positioning strategy**:
+   - Watermark: 400px from bottom (clears TikTok UI at 320px threshold)
+   - Captions: 700px from bottom (middle zone placement, competitor best practice)
+   - Clear 167px gap between elements prevents overlap
+3. **Vertical videos** (9:16): Default 0.35 scale optimized for brainrot/TikTok content
+4. **Horizontal videos** (16:9): Can use larger scales (0.35-0.45) with more room
+5. **Viral freemium tools**: Higher opacity (0.80-0.90) drives brand recall and viral coefficient
+6. **Professional/corporate**: Lower opacity (0.70-0.75) for subtle branding
+7. **Test on mobile**: Most viewers watch on phones - ensure readability on small screens
+8. **Platform UI awareness**:
+   - TikTok: 320px exclusion zone from bottom
+   - Instagram Reels: 420px exclusion zone (accept minor overlap)
+   - YouTube Shorts: 270px exclusion zone
+9. **A/B testing**: Monitor viral coefficient and freemium conversion to optimize balance
 
 ### FFmpeg Implementation
 
