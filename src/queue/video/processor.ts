@@ -444,10 +444,26 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
       // Escape text for FFmpeg (escape single quotes and colons)
       const escapedText = watermarkText.replace(/'/g, "'\\''").replace(/:/g, '\\:');
 
-      // Build drawtext filter with font parameter (uses fontconfig to find font)
-      // Map font family names to fontconfig names
-      const fontName = watermarkFontFamily.replace('-', ' '); // "Liberation-Sans-Bold" -> "Liberation Sans Bold"
-      const drawtextFilter = `drawtext=font='${fontName}':text='${escapedText}':fontsize=${watermarkFontSize}:fontcolor=${fontColor}:borderw=${watermarkBorderWidth}:bordercolor=${borderColor}:x=${textPosition.x}:y=${textPosition.y}`;
+      // Build drawtext filter with fontfile parameter using fontconfig syntax
+      // fontconfig syntax: "FontFamily:style=Style" (e.g., "Liberation Sans:style=Bold")
+      // Extract font family and style from watermarkFontFamily
+      let fontFamily = 'Liberation Sans';
+      let fontStyle = 'Bold';
+
+      if (watermarkFontFamily.includes('-')) {
+        const parts = watermarkFontFamily.split('-');
+        // "Liberation-Sans-Bold" -> family="Liberation Sans", style="Bold"
+        if (parts.length >= 3) {
+          fontFamily = `${parts[0]} ${parts[1]}`;
+          fontStyle = parts.slice(2).join(' ');
+        } else if (parts.length === 2) {
+          fontFamily = parts[0].replace(/([A-Z])/g, ' $1').trim();
+          fontStyle = parts[1];
+        }
+      }
+
+      // Use fontfile parameter with fontconfig syntax (colons need to be escaped)
+      const drawtextFilter = `drawtext=fontfile='${fontFamily}\\:style=${fontStyle}':text='${escapedText}':fontsize=${watermarkFontSize}:fontcolor=${fontColor}:borderw=${watermarkBorderWidth}:bordercolor=${borderColor}:x=${textPosition.x}:y=${textPosition.y}`;
 
       // Apply drawtext after captions
       filterComplex += `[bg]ass='${captionsPath.replace(/'/g, "'\\''")}'[captioned];`;
