@@ -434,9 +434,11 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
       filterComplex += `[tts][music]amix=inputs=2:duration=first[audio];`;
     }
 
-    // Video processing - Scale to target height, crop to target width, then trim
+    // Video processing - Scale to cover target dimensions, crop to exact size, then trim
+    // Uses force_original_aspect_ratio=increase to handle any input aspect ratio
+    // This ensures narrow portrait videos (e.g., 606x1080) scale correctly for 1080x1920 output
     const [targetWidth, targetHeight] = resolution.split('x').map(Number);
-    filterComplex += `[0:v]scale=-1:${targetHeight},crop=${targetWidth}:${targetHeight},trim=duration=${duration}[bg];`;
+    filterComplex += `[0:v]scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=increase,crop=${targetWidth}:${targetHeight},trim=duration=${duration}[bg];`;
 
     // Determine watermark type: text (priority) or image (fallback)
     const useTextWatermark = !!watermarkText;
