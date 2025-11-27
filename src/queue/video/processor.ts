@@ -343,6 +343,11 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     watermarkShadowColor = '#000000',
     watermarkShadowX = 2,
     watermarkShadowY = 2,
+    // Watermark background box (for visibility on busy backgrounds)
+    watermarkBoxEnabled = false,
+    watermarkBoxColor = '#000000',
+    watermarkBoxOpacity = 0.3,
+    watermarkBoxPadding = 6,
     // Image watermark (legacy fallback)
     watermarkUrl,
     watermarkScale = 0.35, // 35% of video width (aggressive for viral marketing)
@@ -473,7 +478,19 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
       }
 
       // Use fontfile parameter with fontconfig syntax (colons need to be escaped)
-      const drawtextFilter = `drawtext=fontfile='${fontFamily}\\:style=${fontStyle}':text='${escapedText}':fontsize=${watermarkFontSize}:fontcolor=${fontColor}:borderw=${watermarkBorderWidth}:bordercolor=${borderColor}:shadowcolor=${shadowColor}:shadowx=${watermarkShadowX}:shadowy=${watermarkShadowY}:x=${textPosition.x}:y=${textPosition.y}`;
+      let drawtextFilter = `drawtext=fontfile='${fontFamily}\\:style=${fontStyle}':text='${escapedText}':fontsize=${watermarkFontSize}:fontcolor=${fontColor}:borderw=${watermarkBorderWidth}:bordercolor=${borderColor}:shadowcolor=${shadowColor}:shadowx=${watermarkShadowX}:shadowy=${watermarkShadowY}:x=${textPosition.x}:y=${textPosition.y}`;
+
+      // Add background box if enabled (for visibility on busy backgrounds)
+      if (watermarkBoxEnabled) {
+        const boxColor = hexToFFmpegColor(watermarkBoxColor, watermarkBoxOpacity);
+        drawtextFilter += `:box=1:boxcolor=${boxColor}:boxborderw=${watermarkBoxPadding}`;
+        console.log('[VideoCompose] Watermark box enabled:', {
+          color: watermarkBoxColor,
+          opacity: watermarkBoxOpacity,
+          padding: watermarkBoxPadding,
+          ffmpegBoxColor: boxColor
+        });
+      }
 
       console.log('[VideoCompose] Drawtext filter:', drawtextFilter);
 

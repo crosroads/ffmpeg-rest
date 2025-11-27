@@ -49,6 +49,11 @@ export const VideoComposeJobDataSchema = z.object({
   watermarkShadowColor: z.string().optional(),
   watermarkShadowX: z.number().min(-20).max(20).optional(),
   watermarkShadowY: z.number().min(-20).max(20).optional(),
+  // Watermark background box (for visibility on busy backgrounds)
+  watermarkBoxEnabled: z.boolean().default(false).optional(),
+  watermarkBoxColor: z.string().default('#000000').optional(),
+  watermarkBoxOpacity: z.number().min(0).max(1).default(0.3).optional(),
+  watermarkBoxPadding: z.number().min(0).max(50).default(6).optional(),
   // Image-based watermark (legacy, kept for backward compatibility)
   watermarkUrl: z.string().url().optional(),
   watermarkScale: z.number().min(0).max(1).default(0.35).optional(),
