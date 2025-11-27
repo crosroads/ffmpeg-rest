@@ -355,6 +355,11 @@ export function registerVideoRoutes(app: OpenAPIHono) {
         watermarkShadowColor: body.watermarkShadowColor,
         watermarkShadowX: body.watermarkShadowX,
         watermarkShadowY: body.watermarkShadowY,
+        // Watermark background box (for visibility on busy backgrounds)
+        watermarkBoxEnabled: body.watermarkBoxEnabled,
+        watermarkBoxColor: body.watermarkBoxColor,
+        watermarkBoxOpacity: body.watermarkBoxOpacity,
+        watermarkBoxPadding: body.watermarkBoxPadding,
         // Image watermark parameters (legacy)
         watermarkUrl: body.watermarkUrl,
         watermarkScale: body.watermarkScale,

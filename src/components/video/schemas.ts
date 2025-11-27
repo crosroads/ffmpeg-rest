@@ -502,6 +502,25 @@ export const composeVideoRoute = createRoute({
                 'Vertical shadow offset in pixels. Positive = down, negative = up. Default: 2. Range: -20 to 20.',
               example: 2
             }),
+            watermarkBoxEnabled: z.boolean().optional().openapi({
+              description:
+                'Enable semi-transparent background box behind watermark text for improved visibility on busy backgrounds. Default: false.',
+              example: true
+            }),
+            watermarkBoxColor: z.string().optional().openapi({
+              description:
+                'Background box color (hex format). Default: "#000000" (black). Only used when watermarkBoxEnabled is true.',
+              example: '#000000'
+            }),
+            watermarkBoxOpacity: z.number().min(0).max(1).optional().openapi({
+              description:
+                'Background box opacity (0.0-1.0). Default: 0.3 (30%, subtle). Recommended: 0.2-0.4 for readability without being intrusive.',
+              example: 0.3
+            }),
+            watermarkBoxPadding: z.number().min(0).max(50).optional().openapi({
+              description: 'Padding around watermark text inside the box in pixels. Default: 6px. Range: 0-50.',
+              example: 6
+            }),
             watermarkUrl: z.string().url().optional().openapi({
               description:
                 '**Image-based watermark** (legacy). URL of watermark image (PNG with transparency). Use watermarkText instead for better control. If both provided, watermarkText takes priority.',
