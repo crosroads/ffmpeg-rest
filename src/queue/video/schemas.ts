@@ -81,7 +81,9 @@ export const VideoComposeJobDataSchema = z.object({
   highlightColor: z.string().optional(),
   marginBottom: z.number().min(0).max(2000).optional(), // Caption vertical position (distance from bottom edge in pixels)
   // S3/R2 path prefix for multi-project bucket organization
-  pathPrefix: z.string().optional() // Example: "vicsee/videos" or "easybrainrot/videos"
+  pathPrefix: z.string().optional(), // Example: "vicsee/videos" or "easybrainrot/videos"
+  // Public CDN URL base for constructing the final video URL
+  publicUrl: z.string().url().optional() // Example: "https://assets.vicsee.com" or "https://cdn.easybrainrot.com"
 });
 
 export type VideoToMp4JobData = z.infer<typeof VideoToMp4JobDataSchema>;

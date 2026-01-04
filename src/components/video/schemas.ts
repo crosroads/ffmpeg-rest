@@ -588,6 +588,11 @@ export const composeVideoRoute = createRoute({
               description:
                 'S3/R2 path prefix for storing the composed video. Allows multi-project setups to organize videos in separate folders. Example: "vicsee/videos" → uploads to s3://bucket/vicsee/videos/{videoId}.mp4. Default: S3_PATH_PREFIX env var or "videos".',
               example: 'vicsee/videos'
+            }),
+            publicUrl: z.string().url().optional().openapi({
+              description:
+                'Public CDN URL base for constructing the final video URL. Allows each project to use its own branded CDN domain. Example: "https://assets.vicsee.com" → returns https://assets.vicsee.com/vicsee/videos/{videoId}.mp4. If not provided, falls back to S3_PUBLIC_URL env var or S3 endpoint.',
+              example: 'https://assets.vicsee.com'
             })
           })
         }

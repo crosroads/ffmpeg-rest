@@ -363,7 +363,9 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     highlightColor,
     marginBottom,
     // S3 path prefix for multi-project support
-    pathPrefix
+    pathPrefix,
+    // Public CDN URL for constructing final video URL
+    publicUrl
   } = job.data;
 
   const jobDir = path.join(env.TEMP_DIR, job.id);
@@ -575,8 +577,8 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
 
     // 7. Handle storage mode
     if (env.STORAGE_MODE === 's3') {
-      // Pass pathPrefix from request to support multi-project bucket structure
-      const { url } = await uploadToS3(outputPath, 'video/mp4', `${job.id}.mp4`, pathPrefix);
+      // Pass pathPrefix and publicUrl from request to support multi-project bucket structure
+      const { url } = await uploadToS3(outputPath, 'video/mp4', `${job.id}.mp4`, pathPrefix, publicUrl);
       await rm(jobDir, { recursive: true, force: true });
 
       const result = {

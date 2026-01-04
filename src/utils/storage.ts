@@ -119,7 +119,8 @@ export async function uploadToS3(
   filePath: string,
   contentType: string,
   originalFilename: string,
-  pathPrefix?: string // Optional: allows dynamic path per-project (e.g., "vicsee/videos" or "easybrainrot/videos")
+  pathPrefix?: string, // Optional: allows dynamic path per-project (e.g., "vicsee/videos" or "easybrainrot/videos")
+  publicUrl?: string // Optional: custom CDN domain for the final URL (e.g., "https://assets.vicsee.com")
 ): Promise<UploadResult> {
   if (env.STORAGE_MODE !== 's3') {
     throw new Error('S3 mode not enabled');
@@ -166,7 +167,12 @@ export async function uploadToS3(
     })
   );
 
-  const url = env.S3_PUBLIC_URL ? `${env.S3_PUBLIC_URL}/${key}` : `${env.S3_ENDPOINT}/${env.S3_BUCKET}/${key}`;
+  // Construct public URL with priority: publicUrl param > S3_PUBLIC_URL env > S3 endpoint
+  const url = publicUrl
+    ? `${publicUrl}/${key}`
+    : env.S3_PUBLIC_URL
+      ? `${env.S3_PUBLIC_URL}/${key}`
+      : `${env.S3_ENDPOINT}/${env.S3_BUCKET}/${key}`;
 
   const result: UploadResult = { url, key };
 
