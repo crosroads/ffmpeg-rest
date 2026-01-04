@@ -79,7 +79,9 @@ export const VideoComposeJobDataSchema = z.object({
   fontSize: z.number().optional(),
   primaryColor: z.string().optional(),
   highlightColor: z.string().optional(),
-  marginBottom: z.number().min(0).max(2000).optional() // Caption vertical position (distance from bottom edge in pixels)
+  marginBottom: z.number().min(0).max(2000).optional(), // Caption vertical position (distance from bottom edge in pixels)
+  // S3/R2 path prefix for multi-project bucket organization
+  pathPrefix: z.string().optional() // Example: "vicsee/videos" or "easybrainrot/videos"
 });
 
 export type VideoToMp4JobData = z.infer<typeof VideoToMp4JobDataSchema>;

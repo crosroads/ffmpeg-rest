@@ -118,7 +118,8 @@ export async function checkS3Health(): Promise<void> {
 export async function uploadToS3(
   filePath: string,
   contentType: string,
-  originalFilename: string
+  originalFilename: string,
+  pathPrefix?: string // Optional: allows dynamic path per-project (e.g., "vicsee/videos" or "easybrainrot/videos")
 ): Promise<UploadResult> {
   if (env.STORAGE_MODE !== 's3') {
     throw new Error('S3 mode not enabled');
@@ -147,7 +148,10 @@ export async function uploadToS3(
 
   const timestamp = new Date().toISOString().split('T')[0];
   const uuid = randomUUID();
-  const key = `${env.S3_PATH_PREFIX}/${timestamp}-${uuid}/${originalFilename}`;
+
+  // Use provided pathPrefix or fall back to env variable
+  const prefix = pathPrefix || env.S3_PATH_PREFIX || 'videos';
+  const key = `${prefix}/${timestamp}-${uuid}/${originalFilename}`;
 
   const fileBuffer = await readFile(filePath);
   const fileStats = await stat(filePath);

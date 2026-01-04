@@ -583,6 +583,11 @@ export const composeVideoRoute = createRoute({
               description:
                 'Caption vertical position - distance from bottom edge in pixels (0-2000). Default: 700px (middle zone). Higher values move caption UP toward center. Recommended: 960px for 50% positioning with optimal spacing from watermark.',
               example: 960
+            }),
+            pathPrefix: z.string().optional().openapi({
+              description:
+                'S3/R2 path prefix for storing the composed video. Allows multi-project setups to organize videos in separate folders. Example: "vicsee/videos" → uploads to s3://bucket/vicsee/videos/{videoId}.mp4. Default: S3_PATH_PREFIX env var or "videos".',
+              example: 'vicsee/videos'
             })
           })
         }
