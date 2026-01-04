@@ -372,7 +372,10 @@ export function registerVideoRoutes(app: OpenAPIHono) {
         fontSize: body.fontSize,
         primaryColor: body.primaryColor,
         highlightColor: body.highlightColor,
-        marginBottom: body.marginBottom
+        marginBottom: body.marginBottom,
+        // Multi-project bucket organization
+        pathPrefix: body.pathPrefix,
+        publicUrl: body.publicUrl
       });
 
       console.log(`[VideoCompose] Job queued: ${job.id}`);
