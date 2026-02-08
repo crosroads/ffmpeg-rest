@@ -86,7 +86,23 @@ export const VideoComposeJobDataSchema = z.object({
   publicUrl: z.string().url().optional() // Example: "https://assets.vicsee.com" or "https://cdn.easybrainrot.com"
 });
 
+export const VideoOverlayJobDataSchema = z.object({
+  videoUrl: z.string().url(),
+  // Overlay source (one required): bundled asset name OR remote URL
+  overlayAsset: z.string().optional(),
+  overlayUrl: z.string().url().optional(),
+  // Overlay positioning
+  overlayPosition: z.enum(['top-right', 'top-left', 'bottom-right', 'bottom-left']).default('top-right'),
+  overlayScale: z.number().min(0.01).max(1).default(0.22),
+  overlayMarginX: z.number().min(0).max(1000).default(20),
+  overlayMarginY: z.number().min(0).max(1000).default(20),
+  // S3/R2 path prefix for multi-project bucket organization
+  pathPrefix: z.string().optional(),
+  publicUrl: z.string().url().optional()
+});
+
 export type VideoToMp4JobData = z.infer<typeof VideoToMp4JobDataSchema>;
 export type VideoExtractAudioJobData = z.infer<typeof VideoExtractAudioJobDataSchema>;
 export type VideoExtractFramesJobData = z.infer<typeof VideoExtractFramesJobDataSchema>;
 export type VideoComposeJobData = z.infer<typeof VideoComposeJobDataSchema>;
+export type VideoOverlayJobData = z.infer<typeof VideoOverlayJobDataSchema>;

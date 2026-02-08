@@ -7,7 +7,8 @@ import {
   extractFramesRoute,
   extractFramesUrlRoute,
   downloadFrameRoute,
-  composeVideoRoute
+  composeVideoRoute,
+  videoOverlayRoute
 } from './schemas';
 import { addJob, JobType, queueEvents, validateJobResult } from '~/queue';
 import { env } from '~/config/env';
@@ -400,6 +401,82 @@ export function registerVideoRoutes(app: OpenAPIHono) {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('[VideoCompose] Error:', errorMessage);
+
+      return c.json(
+        {
+          error: 'Processing failed',
+          message: errorMessage
+        },
+        500
+      );
+    }
+  });
+
+  app.openapi(videoOverlayRoute, async (c) => {
+    try {
+      if (env.STORAGE_MODE !== 's3') {
+        return c.json(
+          {
+            error: 'S3 mode required',
+            message: 'Video overlay requires STORAGE_MODE=s3 in environment variables'
+          },
+          400
+        );
+      }
+
+      const body = c.req.valid('json');
+
+      if (!body.overlayAsset && !body.overlayUrl) {
+        return c.json(
+          {
+            error: 'Either overlayAsset or overlayUrl must be provided'
+          },
+          400
+        );
+      }
+
+      console.log('[VideoOverlay] Received request:', {
+        videoUrl: body.videoUrl,
+        overlayAsset: body.overlayAsset,
+        overlayUrl: body.overlayUrl,
+        overlayPosition: body.overlayPosition,
+        overlayScale: body.overlayScale,
+        pathPrefix: body.pathPrefix
+      });
+
+      const job = await addJob(JobType.VIDEO_OVERLAY, {
+        videoUrl: body.videoUrl,
+        overlayAsset: body.overlayAsset,
+        overlayUrl: body.overlayUrl,
+        overlayPosition: body.overlayPosition,
+        overlayScale: body.overlayScale,
+        overlayMarginX: body.overlayMarginX,
+        overlayMarginY: body.overlayMarginY,
+        pathPrefix: body.pathPrefix,
+        publicUrl: body.publicUrl
+      });
+
+      console.log(`[VideoOverlay] Job queued: ${job.id}`);
+
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
+
+      if (!result.success || !result.outputUrl) {
+        console.error('[VideoOverlay] Job failed:', result.error);
+        return c.json(
+          {
+            error: result.error || 'Video overlay failed'
+          },
+          400
+        );
+      }
+
+      console.log(`[VideoOverlay] Job complete: ${result.outputUrl}`);
+
+      return c.json({ url: result.outputUrl }, 200);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[VideoOverlay] Error:', errorMessage);
 
       return c.json(
         {

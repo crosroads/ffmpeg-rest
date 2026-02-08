@@ -11,7 +11,8 @@ import {
   processVideoToMp4,
   processVideoExtractAudio,
   processVideoExtractFrames,
-  processVideoCompose
+  processVideoCompose,
+  processVideoOverlay
 } from '~/queue/video/processor';
 import { processImageToJpg } from '~/queue/image/processor';
 import { processMediaProbe } from '~/queue/media/processor';
@@ -36,6 +37,8 @@ const worker = new Worker<unknown, JobResult>(
         return processVideoExtractFrames(job as never);
       case JobType.VIDEO_COMPOSE:
         return processVideoCompose(job as never);
+      case JobType.VIDEO_OVERLAY:
+        return processVideoOverlay(job as never);
       case JobType.IMAGE_TO_JPG:
         return processImageToJpg(job as never);
       case JobType.MEDIA_PROBE:

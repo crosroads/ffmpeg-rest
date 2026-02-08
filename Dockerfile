@@ -43,6 +43,7 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=build --chown=nodejs:nodejs /app/dist ./dist
 COPY --chown=nodejs:nodejs package*.json ./
+COPY --chown=nodejs:nodejs assets/ ./assets/
 
 USER nodejs
 

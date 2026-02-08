@@ -11,6 +11,102 @@ import {
 } from '~/utils/schemas';
 
 /**
+ * POST /video/overlay - Apply PNG image overlay to a video
+ */
+export const videoOverlayRoute = createRoute({
+  method: 'post',
+  path: '/video/overlay',
+  tags: ['Video'],
+  summary: 'Apply PNG image overlay to a video',
+  description:
+    'Composites a PNG image (bundled asset or remote URL) onto a video using FFmpeg overlay filter. Audio is preserved via copy codec. Returns S3/R2 URL of the result.',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            videoUrl: z.string().url().openapi({
+              description: 'Source video URL to process.',
+              example: 'https://cdn.example.com/video.mp4'
+            }),
+            overlayAsset: z.string().optional().openapi({
+              description:
+                'Bundled asset name in /assets/overlays/ (e.g., "vicsee" loads vicsee.png). Takes priority over overlayUrl if both provided.',
+              example: 'vicsee'
+            }),
+            overlayUrl: z.string().url().optional().openapi({
+              description: 'Remote PNG URL to download and use as overlay. Used when overlayAsset is not provided.',
+              example: 'https://cdn.example.com/logo.png'
+            }),
+            overlayPosition: z
+              .enum(['top-right', 'top-left', 'bottom-right', 'bottom-left'])
+              .default('top-right')
+              .openapi({
+                description: 'Corner position for the overlay.',
+                example: 'top-right'
+              }),
+            overlayScale: z.number().min(0.01).max(1).default(0.22).openapi({
+              description: 'Overlay width as fraction of video width (0.01-1.0). Default: 0.22 (22%).',
+              example: 0.22
+            }),
+            overlayMarginX: z.number().min(0).max(1000).default(20).openapi({
+              description: 'Horizontal margin from edge in pixels. Default: 20.',
+              example: 20
+            }),
+            overlayMarginY: z.number().min(0).max(1000).default(20).openapi({
+              description: 'Vertical margin from edge in pixels. Default: 20.',
+              example: 20
+            }),
+            pathPrefix: z.string().optional().openapi({
+              description:
+                'S3/R2 path prefix for storing the output. Example: "vicsee/fern". Default: S3_PATH_PREFIX env var.',
+              example: 'vicsee/fern'
+            }),
+            publicUrl: z.string().url().optional().openapi({
+              description:
+                'Public CDN URL base for the returned URL. Example: "https://assets.vicsee.com". Default: S3_PUBLIC_URL env var.',
+              example: 'https://assets.vicsee.com'
+            })
+          })
+        }
+      },
+      required: true
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            url: z.string().url().openapi({
+              description: 'S3/R2 URL of the overlayed video',
+              example: 'https://assets.vicsee.com/vicsee/fern/2026-02-08-abc123/job456.mp4'
+            })
+          })
+        }
+      },
+      description: 'Video overlay successful'
+    },
+    400: {
+      content: {
+        'application/json': {
+          schema: ErrorSchema
+        }
+      },
+      description: 'Bad request or S3 mode not enabled'
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: ErrorSchema
+        }
+      },
+      description: 'Processing failed'
+    }
+  }
+});
+
+/**
  * POST /video/mp4 - Convert any video format to MP4
  */
 export const videoToMp4Route = createRoute({

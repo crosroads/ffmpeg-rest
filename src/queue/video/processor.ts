@@ -4,7 +4,8 @@ import type {
   VideoToMp4JobData,
   VideoExtractAudioJobData,
   VideoExtractFramesJobData,
-  VideoComposeJobData
+  VideoComposeJobData,
+  VideoOverlayJobData
 } from './schemas';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
@@ -17,6 +18,8 @@ import { uploadToS3 } from '~/utils/storage';
 import { generateASS } from '~/utils/ass-generator';
 import type { WatermarkPosition } from '~/utils/watermark-positions';
 import { getWatermarkPosition } from '~/utils/watermark-positions';
+import type { OverlayPosition } from '~/utils/overlay-positions';
+import { getOverlayPosition } from '~/utils/overlay-positions';
 import { downloadFile, getCachedBackgroundVideo } from '~/utils/download';
 
 const execFileAsync = promisify(execFile);
@@ -609,6 +612,117 @@ export async function processVideoCompose(job: Job<VideoComposeJobData>): Promis
     return {
       success: false,
       error: `Failed to compose video: ${errorMessage}`
+    };
+  }
+}
+
+const OVERLAYS_DIR = path.resolve(process.cwd(), 'assets/overlays');
+
+export async function processVideoOverlay(job: Job<VideoOverlayJobData>): Promise<JobResult> {
+  const {
+    videoUrl,
+    overlayAsset,
+    overlayUrl,
+    overlayPosition = 'top-right',
+    overlayScale = 0.22,
+    overlayMarginX = 20,
+    overlayMarginY = 20,
+    pathPrefix,
+    publicUrl
+  } = job.data;
+
+  const jobDir = path.join(env.TEMP_DIR, job.id);
+
+  try {
+    await mkdir(jobDir, { recursive: true });
+
+    const videoPath = path.join(jobDir, 'input.mp4');
+    const overlayPath = path.join(jobDir, 'overlay.png');
+    const outputPath = path.join(jobDir, 'output.mp4');
+
+    // 1. Download video
+    console.log(`[VideoOverlay] Downloading video: ${videoUrl}`);
+    await downloadFile(videoUrl, videoPath);
+
+    // 2. Resolve overlay PNG: bundled asset (priority) or remote URL
+    if (overlayAsset) {
+      const assetPath = path.join(OVERLAYS_DIR, `${overlayAsset}.png`);
+      if (!existsSync(assetPath)) {
+        return {
+          success: false,
+          error: `Overlay asset not found: ${overlayAsset} (looked in ${OVERLAYS_DIR})`
+        };
+      }
+      // Copy bundled asset to job directory
+      const { copyFile } = await import('fs/promises');
+      await copyFile(assetPath, overlayPath);
+      console.log(`[VideoOverlay] Using bundled asset: ${overlayAsset}`);
+    } else if (overlayUrl) {
+      console.log(`[VideoOverlay] Downloading overlay: ${overlayUrl}`);
+      await downloadFile(overlayUrl, overlayPath);
+    } else {
+      return {
+        success: false,
+        error: 'Either overlayAsset or overlayUrl must be provided'
+      };
+    }
+
+    // 3. Build FFmpeg filter_complex
+    const position = getOverlayPosition(overlayPosition as OverlayPosition, overlayMarginX, overlayMarginY);
+    const filterComplex = `[1:v]scale=iw*${overlayScale}:-1[ovl];[0:v][ovl]overlay=${position}`;
+
+    console.log(`[VideoOverlay] Filter: ${filterComplex}`);
+
+    // 4. Execute FFmpeg
+    const args = [
+      '-i',
+      videoPath,
+      '-i',
+      overlayPath,
+      '-filter_complex',
+      filterComplex,
+      '-c:a',
+      'copy',
+      '-c:v',
+      'libx264',
+      '-preset',
+      'fast',
+      '-crf',
+      '23',
+      '-y',
+      outputPath
+    ];
+
+    console.log('[VideoOverlay] Running FFmpeg with args:', args);
+    await execFileAsync('ffmpeg', args, { timeout: PROCESSING_TIMEOUT });
+
+    // 5. Upload to S3/R2
+    if (env.STORAGE_MODE === 's3') {
+      const { url } = await uploadToS3(outputPath, 'video/mp4', `${job.id}.mp4`, pathPrefix, publicUrl);
+      await rm(jobDir, { recursive: true, force: true });
+
+      console.log(`[VideoOverlay] Complete: ${url}`);
+      return {
+        success: true,
+        outputUrl: url
+      };
+    }
+
+    return {
+      success: true,
+      outputPath
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[VideoOverlay] Error:', errorMessage);
+
+    await rm(jobDir, { recursive: true, force: true }).catch(() => {
+      /* cleanup best-effort */
+    });
+
+    return {
+      success: false,
+      error: `Failed to overlay video: ${errorMessage}`
     };
   }
 }

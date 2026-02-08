@@ -10,6 +10,7 @@ export const JobType = {
   VIDEO_EXTRACT_AUDIO: 'video:audio',
   VIDEO_EXTRACT_FRAMES: 'video:frames',
   VIDEO_COMPOSE: 'video:compose',
+  VIDEO_OVERLAY: 'video:overlay',
   IMAGE_TO_JPG: 'image:jpg',
   MEDIA_PROBE: 'media:info'
 } as const;
