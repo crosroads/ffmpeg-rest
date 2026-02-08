@@ -33,7 +33,7 @@ A generic video overlay service that composites a PNG image onto a video using F
   "videoUrl": "https://cdn.example.com/input.mp4",
   "overlayAsset": "vicsee",
   "overlayPosition": "top-right",
-  "overlayScale": 0.22,
+  "overlayScale": 0.35,
   "overlayMarginX": 20,
   "overlayMarginY": 20,
   "pathPrefix": "vicsee/fern",
@@ -49,7 +49,7 @@ A generic video overlay service that composites a PNG image onto a video using F
 | `overlayAsset` | string | No* | — | Bundled asset name in `/assets/overlays/` (e.g., `"vicsee"` loads `vicsee.png`) |
 | `overlayUrl` | string (URL) | No* | — | Remote PNG URL to download and use as overlay |
 | `overlayPosition` | enum | No | `"top-right"` | Corner position: `top-right`, `top-left`, `bottom-right`, `bottom-left` |
-| `overlayScale` | number (0-1) | No | `0.22` | Overlay width as fraction of video width |
+| `overlayScale` | number (0-1) | No | `0.22` | Overlay width as fraction of video width. VicSee uses `0.35` (tested Feb 8 at 0.22/0.30/0.35 on 720p Kie output) |
 | `overlayMarginX` | number | No | `20` | Horizontal margin from edge in pixels |
 | `overlayMarginY` | number | No | `20` | Vertical margin from edge in pixels |
 | `pathPrefix` | string | No | env `S3_PATH_PREFIX` | S3 key prefix for upload organization |
@@ -316,7 +316,7 @@ curl -X POST https://ffmpeg.example.com/video/overlay \
     "videoUrl": "https://cdn.example.com/test-video.mp4",
     "overlayAsset": "vicsee",
     "overlayPosition": "top-right",
-    "overlayScale": 0.22,
+    "overlayScale": 0.35,
     "pathPrefix": "test/overlay",
     "publicUrl": "https://assets.vicsee.com"
   }'
@@ -346,4 +346,5 @@ curl -X POST https://ffmpeg.example.com/video/overlay \
 ---
 
 *Created: 2026-02-08*
-*Status: Planning — ready for implementation*
+*Status: Implemented and deployed*
+*Tested: Feb 8 — 720p Kie video, scales 0.22/0.30/0.35 tested, 0.35 chosen as VicSee default (~4-5s end-to-end)*
