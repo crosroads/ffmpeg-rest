@@ -669,7 +669,8 @@ export async function processVideoOverlay(job: Job<VideoOverlayJobData>): Promis
 
     // 3. Build FFmpeg filter_complex
     const position = getOverlayPosition(overlayPosition as OverlayPosition, overlayMarginX, overlayMarginY);
-    const filterComplex = `[1:v]scale=iw*${overlayScale}:-1[ovl];[0:v][ovl]overlay=${position}`;
+    // scale2ref scales overlay relative to video width (not overlay's own width)
+    const filterComplex = `[1:v][0:v]scale2ref=w*${overlayScale}:-1[ovl][base];[base][ovl]overlay=${position}`;
 
     console.log(`[VideoOverlay] Filter: ${filterComplex}`);
 
