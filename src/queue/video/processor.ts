@@ -667,10 +667,41 @@ export async function processVideoOverlay(job: Job<VideoOverlayJobData>): Promis
       };
     }
 
-    // 3. Build FFmpeg filter_complex
+    // 3. Probe video dimensions for proportional overlay scaling
+    const { stdout: probeOut } = await execFileAsync('ffprobe', [
+      '-v',
+      'quiet',
+      '-select_streams',
+      'v:0',
+      '-show_entries',
+      'stream=width,height',
+      '-of',
+      'csv=p=0',
+      videoPath
+    ]);
+    const [videoWidth, videoHeight] = probeOut.trim().split(',').map(Number);
+    console.log(`[VideoOverlay] Video: ${videoWidth}x${videoHeight}`);
+
+    // Calculate overlay pixel dimensions (overlayScale = fraction of video width)
+    const { stdout: overlayProbe } = await execFileAsync('ffprobe', [
+      '-v',
+      'quiet',
+      '-select_streams',
+      'v:0',
+      '-show_entries',
+      'stream=width,height',
+      '-of',
+      'csv=p=0',
+      overlayPath
+    ]);
+    const [ovlWidth, ovlHeight] = overlayProbe.trim().split(',').map(Number);
+    const targetWidth = Math.round(videoWidth * overlayScale);
+    const targetHeight = Math.round((targetWidth * ovlHeight) / ovlWidth);
+    console.log(`[VideoOverlay] Overlay: ${ovlWidth}x${ovlHeight} → ${targetWidth}x${targetHeight}`);
+
+    // Build FFmpeg filter_complex (regular scale, not deprecated scale2ref)
     const position = getOverlayPosition(overlayPosition as OverlayPosition, overlayMarginX, overlayMarginY);
-    // scale2ref: main_w = reference (video) width, scales overlay proportionally
-    const filterComplex = `[1:v][0:v]scale2ref=main_w*${overlayScale}:-1[ovl][base];[base][ovl]overlay=${position}`;
+    const filterComplex = `[1:v]scale=${targetWidth}:${targetHeight}[ovl];[0:v][ovl]overlay=${position}`;
 
     console.log(`[VideoOverlay] Filter: ${filterComplex}`);
 
