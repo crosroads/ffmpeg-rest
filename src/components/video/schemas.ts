@@ -11,6 +11,65 @@ import {
 } from '~/utils/schemas';
 
 /**
+ * GET /video/probe - Probe a remote video URL for metadata (duration, width, height)
+ */
+export const videoProbeRoute = createRoute({
+  method: 'get',
+  path: '/video/probe',
+  tags: ['Video'],
+  summary: 'Probe remote video URL for metadata',
+  description:
+    'Reads video container metadata (duration, width, height) from a remote URL using ffprobe. Only reads the header — does NOT download the full video file. Typical response time: <1 second.',
+  request: {
+    query: z.object({
+      url: z.string().url().openapi({
+        description: 'Remote video URL to probe (must be publicly accessible)',
+        example: 'https://cdn.example.com/video.mp4'
+      })
+    })
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            duration: z.number().openapi({
+              description: 'Video duration in seconds (float)',
+              example: 8.5
+            }),
+            width: z.number().int().openapi({
+              description: 'Video width in pixels',
+              example: 1920
+            }),
+            height: z.number().int().openapi({
+              description: 'Video height in pixels',
+              example: 1080
+            })
+          })
+        }
+      },
+      description: 'Video metadata retrieved successfully'
+    },
+    400: {
+      content: {
+        'application/json': {
+          schema: ErrorSchema
+        }
+      },
+      description: 'Invalid URL or no video stream found'
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: ErrorSchema
+        }
+      },
+      description: 'Probe failed'
+    }
+  }
+});
+
+/**
  * POST /video/overlay - Apply PNG image overlay to a video
  */
 export const videoOverlayRoute = createRoute({

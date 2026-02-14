@@ -1,5 +1,6 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import {
+  videoProbeRoute,
   videoToMp4Route,
   videoToMp4UrlRoute,
   extractAudioRoute,
@@ -13,10 +14,53 @@ import {
 import { addJob, JobType, queueEvents, validateJobResult } from '~/queue';
 import { env } from '~/config/env';
 import { mkdir, writeFile, readFile, rm } from 'fs/promises';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { randomUUID } from 'crypto';
 import path from 'path';
 
+const execFileAsync = promisify(execFile);
+
 export function registerVideoRoutes(app: OpenAPIHono) {
+  // GET /video/probe — Lightweight metadata probe for remote video URLs
+  // No queue needed — inline ffprobe, reads only container header (<1s)
+  app.openapi(videoProbeRoute, async (c) => {
+    const { url } = c.req.valid('query');
+
+    try {
+      const { stdout } = await execFileAsync(
+        'ffprobe',
+        ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', url],
+        { timeout: 30000 }
+      );
+
+      const probe = JSON.parse(stdout);
+      const videoStream = probe.streams?.find((s: { codec_type: string }) => s.codec_type === 'video');
+
+      if (!videoStream) {
+        return c.json({ error: 'No video stream found in the provided URL' }, 400);
+      }
+
+      const duration = parseFloat(probe.format?.duration || '0');
+      if (!duration || duration <= 0) {
+        return c.json({ error: 'Could not determine video duration' }, 400);
+      }
+
+      return c.json(
+        {
+          duration,
+          width: videoStream.width,
+          height: videoStream.height
+        },
+        200
+      );
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[VideoProbe] Error:', msg);
+      return c.json({ error: `Probe failed: ${msg}` }, 500);
+    }
+  });
+
   app.openapi(videoToMp4Route, async (c) => {
     try {
       const { file } = c.req.valid('form');
