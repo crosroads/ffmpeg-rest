@@ -1,290 +1,178 @@
-# FFmpeg REST API - EasyBrainrot Customization
+# FFmpeg REST API — Multi-Project Video Processing Service
 
-This fork adds **video composition** capabilities to the original [crisog/ffmpeg-rest](https://github.com/crisog/ffmpeg-rest) template.
+This fork of [crisog/ffmpeg-rest](https://github.com/crisog/ffmpeg-rest) adds custom video processing endpoints for multiple projects. Original fork endpoints are preserved and unmodified.
 
----
-
-## 🎯 What's Added
-
-**New Endpoint:** `POST /video/compose`
-
-Composes videos with:
-- ✅ Background video + audio merge
-- ✨ **Word-by-word karaoke-style captions** (words highlight as spoken - REQUIRED FEATURE)
-- ⚡ **Background video caching** (30-60s saved per video after first download)
-- ✅ Watermark overlay (9 positions)
-- ✅ Configurable styling (fonts, colors, sizes)
-- ✅ Multiple output resolutions
-- ✅ S3/R2 storage integration
-
-**Use Cases:**
-- Brainrot videos (TikTok/Reels)
-- Educational videos (YouTube)
-- Podcast clips (Instagram)
-- Marketing videos
-- Tutorial videos
+**Projects using this service:**
+- **EasyBrainrot / VicSee** — brainrot video composition, video watermarking, video probing
 
 ---
 
-## 🚀 Current Deployment Status
+## Custom Endpoints (Added by Us)
 
-**Environment:** ✅ **LIVE ON RAILWAY**
-- **Server:** Running (Node 22.20.0, Port 8080)
-- **Worker:** Running (5 concurrent jobs)
-- **Redis:** Connected (v8.2.1)
-- **R2 Storage:** Connected (easybrainrot-assets)
-- **Video Composition:** Fully Operational
+These are the endpoints we built on top of the original fork. Original endpoints (video convert, extract audio, extract frames, image convert, media probe) are unchanged.
 
-**Last Deployment:** November 23, 2025
-**Health Checks:** All Passing ✅
+### `POST /video/compose` — Brainrot Video Composition
 
-See **[DEPLOYMENT-STATUS.md](./DEPLOYMENT-STATUS.md)** for complete deployment details, logs, and monitoring information.
+Full video composition: background video + TTS audio + karaoke captions + watermark + background music.
 
----
+| Detail | Value |
+|--------|-------|
+| Added | November 2025 |
+| Consumer | EasyBrainrot, VicSee (brainrot tools) |
+| Queue | Yes (BullMQ) |
+| Processing time | 15-120s depending on duration |
+| Full spec | [API-REFERENCE.md](./API-REFERENCE.md) |
 
-## 📚 Documentation
-
-### 1. [CUSTOMIZATION-GUIDE.md](./CUSTOMIZATION-GUIDE.md) ⭐
-**Complete step-by-step implementation guide**
-- Fork & clone instructions
-- All code to add (6 files, ~800 lines)
-- Local testing procedures
-- Railway deployment
-- Environment configuration
-- Troubleshooting
-
-**Start here if this is your first time!**
-
-### 2. [QUICK-START.md](./QUICK-START.md)
-**TL;DR quick reference**
-- 5-minute command sequence
-- File checklist
-- Environment variables
-- Test commands
-- **✅ Deployment progress tracking**
-
-**Use this after initial setup for quick reference.**
-
-### 3. [API-REFERENCE.md](./API-REFERENCE.md)
-**API documentation and integration guide**
-- Endpoint specification
-- Request/response formats
-- Code examples (TypeScript, Python, cURL)
-- Configuration presets
-- Error handling
-
-**Use this when integrating with your application.**
-
-### 4. [DEPLOYMENT-STATUS.md](./DEPLOYMENT-STATUS.md) 🆕
-**Current production deployment status**
-- Infrastructure overview
-- Environment variables
-- Deployment logs
-- Health monitoring
-- Known issues & warnings
-- Testing status
-
-**Use this to check current deployment state.**
-
-### 5. [CAPTION-SYSTEM.md](./CAPTION-SYSTEM.md) 🆕
-**Technical deep dive into caption implementation**
-- ASS subtitle format specification
-- Phrase segmentation algorithm
-- Inline color animation system
-- Timing calculations (relative vs absolute)
-- Font installation guide
-- Performance optimizations
-- Complete code walkthrough
-
-**Use this to understand how the caption system works.**
-
-### 6. [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) 🆕
-**Common issues and solutions from production deployment**
-- Caption issues (no captions, overlapping, no highlighting, white flash)
-- Video composition issues (cache permissions, job errors)
-- Deployment issues (build failures, FFmpeg missing)
-- Performance issues (slow processing, memory)
-- Storage issues (R2 upload, public URLs)
-- Quick diagnostic checklists
-
-**Use this when encountering problems.**
+Features:
+- Word-by-word karaoke caption highlighting (ASS subtitles)
+- Background video caching (first download ~30-60s, subsequent = instant)
+- Text watermark (drawtext) or image watermark (overlay)
+- Background music mixing with configurable volume
+- 9 watermark positions, configurable opacity/scale
+- Multi-project S3/R2 path prefix support
 
 ---
 
-## 🚀 Quick Setup
+### `POST /video/overlay` — PNG Image Overlay
 
-```bash
-# 1. Clone this repository
-git clone https://github.com/YOUR_USERNAME/ffmpeg-rest.git
-cd ffmpeg-rest
+Composites a PNG image onto any video. Used for brand watermarking.
 
-# 2. Install dependencies
-npm install
+| Detail | Value |
+|--------|-------|
+| Added | February 8, 2026 |
+| Consumer | VicSee (video watermark system) |
+| Queue | Yes (BullMQ) |
+| Processing time | 2-8s |
+| Full spec | [20260208-VIDEO-OVERLAY-ENDPOINT.md](./20260208-VIDEO-OVERLAY-ENDPOINT.md) |
+| Updates | [20260213-OVERLAY-SCALE-UPDATE.md](./20260213-OVERLAY-SCALE-UPDATE.md) |
+| VicSee task | #04i Universal Watermark, #55 Watermark Conversion Upgrade |
 
-# 3. Follow CUSTOMIZATION-GUIDE.md to add code
+Key differences from `/video/compose`:
+- Input: video URL + PNG (not background + audio + subtitles)
+- Audio: copy codec (passthrough, no re-encoding)
+- No captions or music mixing
+- Much faster (2-8s vs 15-120s)
 
-# 4. Deploy on Railway
-# See CUSTOMIZATION-GUIDE.md for full instructions
-```
-
----
-
-## 📁 Files Modified
-
-### New Files (3)
-- `src/utils/ass-generator.ts` - Caption generation
-- `src/utils/watermark-positions.ts` - Watermark positioning
-- `src/utils/download.ts` - File downloading
-
-### Modified Files (3)
-- `src/queue/processor.ts` - Add VIDEO_COMPOSE job type
-- `src/components/video/schemas.ts` - Add API schema
-- `src/components/video/controller.ts` - Add endpoint handler
-
-**Total:** ~800 lines of code added
+Scaling uses ffprobe to probe both video and overlay dimensions, then calculates exact pixel sizes for proportional scaling relative to video width.
 
 ---
 
-## 🎬 Example Usage
+### `GET /video/probe` — Video Metadata Probe (PLANNED)
 
-```bash
-curl -X POST https://your-app.railway.app/video/compose \
-  -H "Content-Type: application/json" \
-  -d '{
-    "backgroundUrl": "https://assets.example.com/backgrounds/minecraft.mp4",
-    "backgroundId": "minecraft",
-    "audioUrl": "https://assets.example.com/audio/narration.mp3",
-    "wordTimestamps": [
-      {"word": "This", "start": 0.0, "end": 0.2},
-      {"word": "is", "start": 0.2, "end": 0.4},
-      {"word": "brainrot", "start": 0.4, "end": 1.0}
-    ],
-    "duration": 80.15,
-    "watermarkUrl": "https://assets.example.com/watermark.png",
-    "resolution": "1080x1920",
-    "watermarkPosition": "bottom-center"
-  }'
-```
+Probes a remote video URL and returns duration, width, height. Uses ffprobe on the URL directly — reads only container metadata, does not download the full video.
 
-**Response:**
-```json
-{
-  "url": "https://assets.example.com/videos/abc123.mp4"
-}
-```
+| Detail | Value |
+|--------|-------|
+| Status | **Spec only — not yet implemented** |
+| Consumer | VicSee public API (Topaz video upscale billing) |
+| Queue | No (inline, <1s) |
+| Full spec | [20260213-VIDEO-PROBE-ENDPOINT.md](./20260213-VIDEO-PROBE-ENDPOINT.md) |
+| VicSee task | #50 Topaz Upscale API |
 
 ---
 
-## 💰 Cost
+## Original Fork Endpoints (Unmodified)
 
-**Railway:**
-- Base: $5/month
-- Per video: ~$0.003
-- Example: $10/month = ~3,333 videos
+These came with the [crisog/ffmpeg-rest](https://github.com/crisog/ffmpeg-rest) template. We do not modify these.
 
-**Cloudflare R2:**
-- Storage: Free (first 10GB)
-- Egress: $0.00 (no egress fees!)
-
-**Total:** ~$5-10/month for unlimited projects
-
----
-
-## 🔧 Environment Variables
-
-Required on Railway:
-
-```bash
-STORAGE_MODE=s3
-S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
-S3_REGION=auto
-S3_BUCKET=your-bucket-name
-S3_ACCESS_KEY_ID=<your-key>
-S3_SECRET_ACCESS_KEY=<your-secret>
-S3_PUBLIC_URL=https://assets.example.com
-REDIS_URL=${{Redis.REDIS_URL}}
-```
-
-See [CUSTOMIZATION-GUIDE.md](./CUSTOMIZATION-GUIDE.md) for complete configuration.
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /video/convert` | Convert video to MP4 (file upload, returns file) |
+| `POST /video/convert/url` | Convert video to MP4 (file upload, returns S3 URL) |
+| `POST /video/audio` | Extract audio from video (returns WAV file) |
+| `POST /video/audio/url` | Extract audio from video (returns S3 URL) |
+| `POST /video/frames` | Extract frames from video (returns archive) |
+| `POST /video/frames/url` | Extract frames from video (returns S3 URL) |
+| `POST /audio/mp3` | Convert audio to MP3 |
+| `POST /audio/wav` | Convert audio to WAV |
+| `POST /image/jpg` | Convert image to JPG (returns file) |
+| `POST /image/jpg/url` | Convert image to JPG (returns S3 URL) |
+| `POST /media/info` | Probe uploaded media file (multipart upload) |
 
 ---
 
-## 🎯 Integration Example
+## Deployment
 
-**From your application:**
-
-```typescript
-const response = await fetch('https://your-app.railway.app/video/compose', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    backgroundUrl: 'https://assets.example.com/backgrounds/minecraft.mp4',
-    backgroundId: 'minecraft', // Enables caching for performance
-    audioUrl: 'https://assets.example.com/audio/narration.mp3',
-    wordTimestamps: [
-      { word: 'This', start: 0.0, end: 0.2 },
-      { word: 'is', start: 0.2, end: 0.4 },
-      { word: 'brainrot', start: 0.4, end: 1.0 }
-    ],
-    duration: 80.15,
-    watermarkUrl: 'https://assets.example.com/watermark.png',
-  }),
-});
-
-const { url } = await response.json();
-console.log('Video URL:', url);
-```
-
-See [API-REFERENCE.md](./API-REFERENCE.md) for complete integration examples.
-
----
-
-## 📊 Features
-
-| Feature | Original Template | This Fork |
-|---------|------------------|-----------|
-| Video to MP4 | ✅ | ✅ |
-| Extract Audio | ✅ | ✅ |
-| Extract Frames | ✅ | ✅ |
-| **Video Composition** | ❌ | ✅ |
-| **Karaoke Captions** | ❌ | ✅ |
-| **Watermark Overlay** | ❌ | ✅ |
-| **Configurable Styling** | ❌ | ✅ |
-| S3/R2 Storage | ✅ | ✅ |
-| Job Queue | ✅ | ✅ |
-| API Authentication | ✅ | ✅ |
-
----
-
-## 🤝 Contributing
-
-This is a custom fork for EasyBrainrot. For the original template:
-- Original: https://github.com/crisog/ffmpeg-rest
-- Issues: https://github.com/crisog/ffmpeg-rest/issues
-
----
-
-## 📝 License
-
-Same as original template: Apache-2.0
-
----
-
-## 🆘 Support
-
-**For customization questions:**
-- See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Comprehensive problem-solving guide
-- See [CUSTOMIZATION-GUIDE.md](./CUSTOMIZATION-GUIDE.md) - Setup and deployment
-- See [CAPTION-SYSTEM.md](./CAPTION-SYSTEM.md) - Technical implementation details
-- Check Railway logs for FFmpeg errors
-- Review [API-REFERENCE.md](./API-REFERENCE.md) for integration help
-
-**For original template issues:**
-- Visit https://github.com/crisog/ffmpeg-rest
-
----
-
-**Status:** ✅ **DEPLOYED AND OPERATIONAL**
 **Environment:** Railway (Production)
-**Maintained By:** EasyBrainrot Team
-**Last Updated:** November 23, 2025
+- **Server:** Node 22, Port 8080
+- **Worker:** 5 concurrent BullMQ jobs
+- **Redis:** BullMQ queue backend
+- **R2 Storage:** Cloudflare R2 (no egress fees)
+
+See [DEPLOYMENT-STATUS.md](./DEPLOYMENT-STATUS.md) for infrastructure details.
+
+---
+
+## Documentation Index
+
+### Setup & Operations
+| Doc | Purpose |
+|-----|---------|
+| [CUSTOMIZATION-GUIDE.md](./CUSTOMIZATION-GUIDE.md) | Step-by-step setup and deployment |
+| [QUICK-START.md](./QUICK-START.md) | TL;DR command reference |
+| [DEPLOYMENT-STATUS.md](./DEPLOYMENT-STATUS.md) | Current production state |
+| [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | Common issues and fixes |
+
+### Endpoint Specs
+| Doc | Endpoint | Status |
+|-----|----------|--------|
+| [API-REFERENCE.md](./API-REFERENCE.md) | `POST /video/compose` | Live |
+| [20260208-VIDEO-OVERLAY-ENDPOINT.md](./20260208-VIDEO-OVERLAY-ENDPOINT.md) | `POST /video/overlay` | Live |
+| [20260213-VIDEO-PROBE-ENDPOINT.md](./20260213-VIDEO-PROBE-ENDPOINT.md) | `GET /video/probe` | Planned |
+
+### Technical Deep-Dives
+| Doc | Topic |
+|-----|-------|
+| [CAPTION-SYSTEM.md](./CAPTION-SYSTEM.md) | ASS subtitle karaoke implementation |
+| [WATERMARK-BOX-FEATURE.md](./WATERMARK-BOX-FEATURE.md) | Watermark background box |
+| [20260213-OVERLAY-SCALE-UPDATE.md](./20260213-OVERLAY-SCALE-UPDATE.md) | Overlay scale 0.35 to 0.22 + ffprobe migration |
+
+### Bug Fixes
+| Doc | Issue |
+|-----|-------|
+| [CRITICAL-FIX-BACKGROUND-CROPPING.md](./CRITICAL-FIX-BACKGROUND-CROPPING.md) | Background video aspect ratio fix |
+| [FIX-NARROW-VIDEO-SCALING.md](./FIX-NARROW-VIDEO-SCALING.md) | Narrow portrait video handling |
+
+---
+
+## Features
+
+| Feature | Original Fork | Custom (Ours) |
+|---------|--------------|---------------|
+| Video to MP4 | Yes | - |
+| Extract Audio | Yes | - |
+| Extract Frames | Yes | - |
+| Image to JPG | Yes | - |
+| Media Probe (file upload) | Yes | - |
+| **Video Composition (brainrot)** | - | Yes |
+| **Karaoke Captions** | - | Yes |
+| **PNG Image Overlay** | - | Yes |
+| **Text Watermark (drawtext)** | - | Yes |
+| **Background Music Mixing** | - | Yes |
+| **Video Probe (URL-based)** | - | Planned |
+| S3/R2 Storage | Yes | Extended (multi-project paths) |
+| Job Queue (BullMQ) | Yes | Yes |
+| API Authentication | Yes | Yes |
+
+---
+
+## Cost
+
+**Railway:** ~$5-10/month base, ~$0.003 per video composition
+**Cloudflare R2:** Free (first 10GB storage, $0 egress)
+
+---
+
+## Changelog
+
+| Date | Change | Commits |
+|------|--------|---------|
+| Nov 2025 | Initial fork + `/video/compose` endpoint | Multiple |
+| Feb 8, 2026 | `POST /video/overlay` endpoint | `b8de1cd` |
+| Feb 13, 2026 | Overlay scale 0.35 to 0.22, bold PNG, ffprobe scaling | `2bdfae3`, `af8d147` |
+| Feb 13, 2026 | `GET /video/probe` spec written | - |
+
+---
+
+**Status:** Live on Railway
+**Last Updated:** February 13, 2026
