@@ -17,8 +17,8 @@ export const connection = createRedisConnection();
 export async function checkRedisHealth(): Promise<void> {
   logger.info('🔍 Checking Redis connection...');
 
-  const maxRetries = 10;
-  const retryDelay = 1000;
+  const maxRetries = 30;
+  const baseDelay = 2000;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -30,12 +30,13 @@ export async function checkRedisHealth(): Promise<void> {
       return;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const delay = Math.min(baseDelay * attempt, 10000);
       if (attempt === maxRetries) {
         logger.error(`❌ Redis health check failed after ${maxRetries} attempts: ${errorMessage}`);
         throw new Error(`Redis health check failed: ${errorMessage}`);
       }
-      logger.debug(`Redis connection attempt ${attempt}/${maxRetries} failed, retrying in ${retryDelay}ms...`);
-      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      logger.warn(`Redis attempt ${attempt}/${maxRetries} failed, retrying in ${delay}ms... (${errorMessage})`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 }
