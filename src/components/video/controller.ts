@@ -1,6 +1,7 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import {
   videoProbeRoute,
+  videoMergeAudioRoute,
   videoToMp4Route,
   videoToMp4UrlRoute,
   extractAudioRoute,
@@ -58,6 +59,78 @@ export function registerVideoRoutes(app: OpenAPIHono) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[VideoProbe] Error:', msg);
       return c.json({ error: `Probe failed: ${msg}` }, 500);
+    }
+  });
+
+  // POST /video/merge-audio — Merge video with audio track (S3 only)
+  app.openapi(videoMergeAudioRoute, async (c) => {
+    try {
+      if (env.STORAGE_MODE !== 's3') {
+        return c.json(
+          {
+            error: 'S3 mode required',
+            message: 'Video merge requires STORAGE_MODE=s3 in environment variables'
+          },
+          400
+        );
+      }
+
+      const body = c.req.valid('json');
+
+      // Resolve volume default: 1.0 for replace, 0.5 for mix
+      const volume = body.volume ?? (body.mode === 'mix' ? 0.5 : 1.0);
+
+      console.log('[VideoMergeAudio] Received request:', {
+        videoUrl: body.videoUrl,
+        audioUrl: body.audioUrl,
+        mode: body.mode,
+        volume,
+        pathPrefix: body.pathPrefix
+      });
+
+      const job = await addJob(JobType.VIDEO_MERGE_AUDIO, {
+        videoUrl: body.videoUrl,
+        audioUrl: body.audioUrl,
+        mode: body.mode,
+        volume,
+        pathPrefix: body.pathPrefix,
+        publicUrl: body.publicUrl
+      });
+
+      console.log(`[VideoMergeAudio] Job queued: ${job.id}`);
+
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
+
+      if (!result.success || !result.outputUrl) {
+        console.error('[VideoMergeAudio] Job failed:', result.error);
+        return c.json(
+          {
+            error: result.error || 'Video merge failed'
+          },
+          400
+        );
+      }
+
+      const duration = (result.metadata?.duration as number) ?? 0;
+      if (!duration) {
+        console.warn('[VideoMergeAudio] Could not determine output duration');
+      }
+
+      console.log(`[VideoMergeAudio] Job complete: ${result.outputUrl}, duration: ${duration}s`);
+
+      return c.json({ url: result.outputUrl, duration }, 200);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[VideoMergeAudio] Error:', errorMessage);
+
+      return c.json(
+        {
+          error: 'Processing failed',
+          message: errorMessage
+        },
+        500
+      );
     }
   });
 

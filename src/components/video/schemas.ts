@@ -166,6 +166,88 @@ export const videoOverlayRoute = createRoute({
 });
 
 /**
+ * POST /video/merge-audio - Merge video with audio track
+ */
+export const videoMergeAudioRoute = createRoute({
+  method: 'post',
+  path: '/video/merge-audio',
+  tags: ['Video'],
+  summary: 'Merge video with audio track',
+  description:
+    'Combines a video URL with an audio URL into a single MP4. Supports replace mode (discard original audio) and mix mode (overlay new audio on existing). Video stream is copied without re-encoding when possible.',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            videoUrl: z.string().url().openapi({
+              description: 'Source video URL (MP4, MOV, WebM)',
+              example: 'https://cdn.example.com/video.mp4'
+            }),
+            audioUrl: z.string().url().openapi({
+              description: 'Audio track URL (MP3, WAV, AAC, OGG, M4A)',
+              example: 'https://cdn.example.com/audio.mp3'
+            }),
+            mode: z.enum(['replace', 'mix']).default('replace').openapi({
+              description: '"replace" = discard original audio. "mix" = overlay new audio on existing.',
+              example: 'replace'
+            }),
+            volume: z.number().min(0).max(1).optional().openapi({
+              description: 'Volume of new audio (0.0-1.0). Default: 1.0 for replace, 0.5 for mix.',
+              example: 1.0
+            }),
+            pathPrefix: z.string().optional().openapi({
+              description: 'S3/R2 path prefix for output.',
+              example: 'vicsee/dew'
+            }),
+            publicUrl: z.string().url().optional().openapi({
+              description: 'Public CDN base URL for returned URL.',
+              example: 'https://assets.vicsee.com'
+            })
+          })
+        }
+      },
+      required: true
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            url: z.string().url().openapi({
+              description: 'S3/R2 URL of merged video',
+              example: 'https://assets.vicsee.com/vicsee/dew/2026-02-24-abc/merge.mp4'
+            }),
+            duration: z.number().openapi({
+              description: 'Output duration in seconds',
+              example: 5.2
+            })
+          })
+        }
+      },
+      description: 'Video merge successful'
+    },
+    400: {
+      content: {
+        'application/json': {
+          schema: ErrorSchema
+        }
+      },
+      description: 'Bad request or S3 mode not enabled'
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: ErrorSchema
+        }
+      },
+      description: 'Processing failed'
+    }
+  }
+});
+
+/**
  * POST /video/mp4 - Convert any video format to MP4
  */
 export const videoToMp4Route = createRoute({

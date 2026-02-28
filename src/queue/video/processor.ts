@@ -5,7 +5,8 @@ import type {
   VideoExtractAudioJobData,
   VideoExtractFramesJobData,
   VideoComposeJobData,
-  VideoOverlayJobData
+  VideoOverlayJobData,
+  VideoMergeAudioJobData
 } from './schemas';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
@@ -755,6 +756,195 @@ export async function processVideoOverlay(job: Job<VideoOverlayJobData>): Promis
     return {
       success: false,
       error: `Failed to overlay video: ${errorMessage}`
+    };
+  }
+}
+
+export async function processVideoMergeAudio(job: Job<VideoMergeAudioJobData>): Promise<JobResult> {
+  const { videoUrl, audioUrl, mode, volume, pathPrefix, publicUrl } = job.data;
+
+  const jobDir = path.join(env.TEMP_DIR, job.id);
+
+  try {
+    await mkdir(jobDir, { recursive: true });
+
+    const videoPath = path.join(jobDir, 'input.mp4');
+    const audioPath = path.join(jobDir, 'audio.mp3');
+    const outputPath = path.join(jobDir, 'output.mp4');
+
+    // 1. Download video + audio in parallel
+    console.log(`[VideoMergeAudio] Downloading video: ${videoUrl}`);
+    console.log(`[VideoMergeAudio] Downloading audio: ${audioUrl}`);
+    await Promise.all([downloadFile(videoUrl, videoPath), downloadFile(audioUrl, audioPath)]);
+
+    // 2. Probe video codec
+    const { stdout: videoCodec } = await execFileAsync(
+      'ffprobe',
+      [
+        '-v',
+        'error',
+        '-select_streams',
+        'v:0',
+        '-show_entries',
+        'stream=codec_name',
+        '-of',
+        'default=noprint_wrappers=1:nokey=1',
+        videoPath
+      ],
+      { timeout: 30000 }
+    );
+
+    const codec = videoCodec.trim().toLowerCase();
+    const canCopyVideo = codec === 'h264' || codec === 'hevc' || codec === 'h265';
+    const videoCodecArgs = canCopyVideo ? ['-c:v', 'copy'] : ['-c:v', 'libx264', '-preset', 'fast', '-crf', '23'];
+
+    console.log(`[VideoMergeAudio] Video codec: ${codec}, copy: ${canCopyVideo}`);
+
+    // 3. Check if source video has audio (needed for mix mode fallback)
+    let hasAudioStream = false;
+    try {
+      const { stdout: audioCodecOut } = await execFileAsync(
+        'ffprobe',
+        [
+          '-v',
+          'error',
+          '-select_streams',
+          'a:0',
+          '-show_entries',
+          'stream=codec_name',
+          '-of',
+          'default=noprint_wrappers=1:nokey=1',
+          videoPath
+        ],
+        { timeout: 30000 }
+      );
+      hasAudioStream = audioCodecOut.trim().length > 0;
+    } catch {
+      hasAudioStream = false;
+    }
+
+    // 4. Determine merge strategy
+    let effectiveMode = mode;
+    if (mode === 'mix' && !hasAudioStream) {
+      console.log('[VideoMergeAudio] Source video has no audio stream, falling back to replace mode');
+      effectiveMode = 'replace';
+    }
+
+    // 5. Build FFmpeg args
+    let args: string[];
+
+    if (effectiveMode === 'replace') {
+      // Replace mode: discard video's original audio, use new audio track
+      args = [
+        '-i',
+        videoPath,
+        '-i',
+        audioPath,
+        ...videoCodecArgs,
+        '-c:a',
+        'aac',
+        '-b:a',
+        '192k',
+        '-map',
+        '0:v:0',
+        '-map',
+        '1:a:0'
+      ];
+
+      // Apply volume if not 1.0
+      if (volume !== 1.0) {
+        args = [
+          '-i',
+          videoPath,
+          '-i',
+          audioPath,
+          ...videoCodecArgs,
+          '-filter_complex',
+          `[1:a]volume=${volume}[audio]`,
+          '-map',
+          '0:v:0',
+          '-map',
+          '[audio]',
+          '-c:a',
+          'aac',
+          '-b:a',
+          '192k'
+        ];
+      }
+
+      args.push('-shortest', '-y', outputPath);
+    } else {
+      // Mix mode: overlay new audio on existing
+      args = [
+        '-i',
+        videoPath,
+        '-i',
+        audioPath,
+        ...videoCodecArgs,
+        '-filter_complex',
+        `[1:a]volume=${volume}[new];[0:a][new]amix=inputs=2:duration=first[out]`,
+        '-map',
+        '0:v:0',
+        '-map',
+        '[out]',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '192k',
+        '-shortest',
+        '-y',
+        outputPath
+      ];
+    }
+
+    console.log(`[VideoMergeAudio] Mode: ${effectiveMode}, Volume: ${volume}`);
+    console.log('[VideoMergeAudio] FFmpeg args:', args);
+
+    // 6. Execute FFmpeg
+    await execFileAsync('ffmpeg', args, { timeout: PROCESSING_TIMEOUT });
+
+    // 7. Probe output duration
+    let duration = 0;
+    try {
+      const { stdout: durationOut } = await execFileAsync(
+        'ffprobe',
+        ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', outputPath],
+        { timeout: 30000 }
+      );
+      duration = parseFloat(durationOut.trim()) || 0;
+    } catch {
+      console.warn('[VideoMergeAudio] Could not probe output duration');
+    }
+
+    // 8. Upload to S3
+    if (env.STORAGE_MODE === 's3') {
+      const { url } = await uploadToS3(outputPath, 'video/mp4', `${job.id}.mp4`, pathPrefix, publicUrl);
+      await rm(jobDir, { recursive: true, force: true });
+
+      console.log(`[VideoMergeAudio] Complete: ${url}, duration: ${duration}s`);
+      return {
+        success: true,
+        outputUrl: url,
+        metadata: { duration }
+      };
+    }
+
+    return {
+      success: true,
+      outputPath,
+      metadata: { duration }
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[VideoMergeAudio] Error:', errorMessage);
+
+    await rm(jobDir, { recursive: true, force: true }).catch(() => {
+      /* cleanup best-effort */
+    });
+
+    return {
+      success: false,
+      error: `Failed to merge audio with video: ${errorMessage}`
     };
   }
 }

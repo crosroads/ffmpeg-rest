@@ -11,6 +11,7 @@ export const JobType = {
   VIDEO_EXTRACT_FRAMES: 'video:frames',
   VIDEO_COMPOSE: 'video:compose',
   VIDEO_OVERLAY: 'video:overlay',
+  VIDEO_MERGE_AUDIO: 'video:merge-audio',
   IMAGE_TO_JPG: 'image:jpg',
   MEDIA_PROBE: 'media:info'
 } as const;
