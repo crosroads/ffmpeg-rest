@@ -248,6 +248,117 @@ export const videoMergeAudioRoute = createRoute({
 });
 
 /**
+ * POST /video/merge - Merge multiple videos into one
+ */
+export const videoMergeRoute = createRoute({
+  method: 'post',
+  path: '/video/merge',
+  tags: ['Video'],
+  summary: 'Merge multiple videos into one',
+  description:
+    'Combines an array of video URLs into a single MP4. Supports hard cuts (no transition), crossfade, and fade-to-black transitions. All inputs are normalized to the target resolution. Audio from all clips is preserved and concatenated in sequence.',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            videos: z
+              .array(
+                z.object({
+                  url: z.string().url().openapi({
+                    description: 'Video URL to include in the merge.',
+                    example: 'https://cdn.example.com/scene1.mp4'
+                  }),
+                  trim: z
+                    .object({
+                      start: z.number().min(0).optional().openapi({
+                        description: 'Trim start time in seconds.',
+                        example: 0
+                      }),
+                      end: z.number().min(0).optional().openapi({
+                        description: 'Trim end time in seconds.',
+                        example: 5.0
+                      })
+                    })
+                    .optional()
+                    .openapi({
+                      description: 'Optional trim settings for this clip.'
+                    })
+                })
+              )
+              .min(2)
+              .max(50)
+              .openapi({
+                description: 'Array of video URLs to merge (2-50 videos). Order determines sequence.'
+              }),
+            transition: z.enum(['none', 'crossfade', 'fade']).default('none').openapi({
+              description: '"none" = hard cut. "crossfade" = smooth blend between clips. "fade" = fade through black.',
+              example: 'none'
+            }),
+            transitionDuration: z.number().min(0.1).max(5).default(0.5).openapi({
+              description: 'Transition duration in seconds (0.1-5.0). Only used when transition is not "none".',
+              example: 0.5
+            }),
+            resolution: z.string().default('1080x1920').openapi({
+              description: 'Output resolution (WIDTHxHEIGHT). All inputs are scaled + padded to fit.',
+              example: '1080x1920'
+            }),
+            pathPrefix: z.string().optional().openapi({
+              description: 'S3/R2 path prefix for output.',
+              example: 'vicsee/dew'
+            }),
+            publicUrl: z.string().url().optional().openapi({
+              description: 'Public CDN base URL for returned URL.',
+              example: 'https://assets.vicsee.com'
+            })
+          })
+        }
+      },
+      required: true
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            url: z.string().url().openapi({
+              description: 'S3/R2 URL of merged video',
+              example: 'https://assets.vicsee.com/vicsee/dew/2026-02-28-abc/merge.mp4'
+            }),
+            duration: z.number().openapi({
+              description: 'Output duration in seconds',
+              example: 15.5
+            }),
+            videoCount: z.number().int().openapi({
+              description: 'Number of videos merged',
+              example: 3
+            })
+          })
+        }
+      },
+      description: 'Video merge successful'
+    },
+    400: {
+      content: {
+        'application/json': {
+          schema: ErrorSchema
+        }
+      },
+      description: 'Bad request or S3 mode not enabled'
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: ErrorSchema
+        }
+      },
+      description: 'Processing failed'
+    }
+  }
+});
+
+/**
  * POST /video/mp4 - Convert any video format to MP4
  */
 export const videoToMp4Route = createRoute({

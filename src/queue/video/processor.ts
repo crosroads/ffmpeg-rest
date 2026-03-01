@@ -6,7 +6,8 @@ import type {
   VideoExtractFramesJobData,
   VideoComposeJobData,
   VideoOverlayJobData,
-  VideoMergeAudioJobData
+  VideoMergeAudioJobData,
+  VideoMergeJobData
 } from './schemas';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
@@ -756,6 +757,235 @@ export async function processVideoOverlay(job: Job<VideoOverlayJobData>): Promis
     return {
       success: false,
       error: `Failed to overlay video: ${errorMessage}`
+    };
+  }
+}
+
+export async function processVideoMerge(job: Job<VideoMergeJobData>): Promise<JobResult> {
+  const { videos, transition, transitionDuration, resolution, pathPrefix, publicUrl } = job.data;
+
+  const jobDir = path.join(env.TEMP_DIR, job.id);
+
+  try {
+    await mkdir(jobDir, { recursive: true });
+
+    const outputPath = path.join(jobDir, 'output.mp4');
+    const [targetWidth, targetHeight] = resolution.split('x').map(Number);
+
+    // 1. Download all input videos in parallel
+    console.log(`[VideoMerge] Downloading ${videos.length} videos...`);
+    const inputPaths: string[] = [];
+    await Promise.all(
+      videos.map(async (video, i) => {
+        const inputPath = path.join(jobDir, `input_${i}.mp4`);
+        await downloadFile(video.url, inputPath);
+        inputPaths.push(inputPath);
+      })
+    );
+
+    // Sort by index to preserve order (Promise.all may resolve out of order)
+    inputPaths.sort((a, b) => {
+      const aIdx = parseInt(a.match(/input_(\d+)/)?.[1] || '0');
+      const bIdx = parseInt(b.match(/input_(\d+)/)?.[1] || '0');
+      return aIdx - bIdx;
+    });
+
+    // 2. Probe each video for duration (needed for xfade offset calculation)
+    const durations: number[] = [];
+    for (let i = 0; i < inputPaths.length; i++) {
+      const trim = videos[i].trim;
+      const { stdout: durationOut } = await execFileAsync(
+        'ffprobe',
+        ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', inputPaths[i]],
+        { timeout: 30000 }
+      );
+      const fullDuration = parseFloat(durationOut.trim()) || 0;
+
+      // Calculate effective duration after trim
+      const start = trim?.start || 0;
+      const end = trim?.end || fullDuration;
+      const effectiveDuration = Math.min(end, fullDuration) - start;
+      durations.push(effectiveDuration);
+
+      console.log(
+        `[VideoMerge] Video ${i}: ${effectiveDuration.toFixed(2)}s (full: ${fullDuration.toFixed(2)}s, trim: ${start}-${end})`
+      );
+    }
+
+    // 3. Build FFmpeg command based on transition type
+    let args: string[];
+
+    if (transition === 'none') {
+      // Hard cut mode: use concat demuxer (fastest, no re-encode if codecs match)
+      // But we need to normalize resolution, so we use filter_complex concat instead
+      const inputs: string[] = [];
+      const filterParts: string[] = [];
+
+      for (let i = 0; i < inputPaths.length; i++) {
+        const trim = videos[i].trim;
+        if (trim?.start !== undefined || trim?.end !== undefined) {
+          const ssArgs = trim.start ? ['-ss', trim.start.toString()] : [];
+          const toArgs = trim.end ? ['-to', trim.end.toString()] : [];
+          inputs.push(...ssArgs, ...toArgs, '-i', inputPaths[i]);
+        } else {
+          inputs.push('-i', inputPaths[i]);
+        }
+        filterParts.push(
+          `[${i}:v]scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2[v${i}];`
+        );
+        filterParts.push(`[${i}:a]aformat=sample_rates=44100:channel_layouts=stereo[a${i}];`);
+      }
+
+      const videoConcat = inputPaths.map((_, i) => `[v${i}]`).join('');
+      const audioConcat = inputPaths.map((_, i) => `[a${i}]`).join('');
+      filterParts.push(`${videoConcat}concat=n=${inputPaths.length}:v=1:a=0[vout];`);
+      filterParts.push(`${audioConcat}concat=n=${inputPaths.length}:v=0:a=1[aout]`);
+
+      const filterComplex = filterParts.join('\n');
+
+      args = [
+        ...inputs,
+        '-filter_complex',
+        filterComplex,
+        '-map',
+        '[vout]',
+        '-map',
+        '[aout]',
+        '-c:v',
+        'libx264',
+        '-preset',
+        'fast',
+        '-crf',
+        '23',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '192k',
+        '-y',
+        outputPath
+      ];
+    } else {
+      // Transition mode: use xfade filter chain
+      const inputs: string[] = [];
+
+      for (let i = 0; i < inputPaths.length; i++) {
+        const trim = videos[i].trim;
+        if (trim?.start !== undefined || trim?.end !== undefined) {
+          const ssArgs = trim.start ? ['-ss', trim.start.toString()] : [];
+          const toArgs = trim.end ? ['-to', trim.end.toString()] : [];
+          inputs.push(...ssArgs, ...toArgs, '-i', inputPaths[i]);
+        } else {
+          inputs.push('-i', inputPaths[i]);
+        }
+      }
+
+      // Map transition type to FFmpeg xfade name
+      const xfadeTransition = transition === 'crossfade' ? 'fade' : 'fade';
+
+      // Build xfade filter chain
+      const filterParts: string[] = [];
+
+      // First: scale all inputs to target resolution
+      for (let i = 0; i < inputPaths.length; i++) {
+        filterParts.push(
+          `[${i}:v]scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2,setpts=PTS-STARTPTS[v${i}];`
+        );
+        filterParts.push(`[${i}:a]aformat=sample_rates=44100:channel_layouts=stereo,asetpts=PTS-STARTPTS[a${i}];`);
+      }
+
+      // Build chained xfade for video
+      let cumulativeOffset = 0;
+      let lastVideoLabel = 'v0';
+      for (let i = 1; i < inputPaths.length; i++) {
+        cumulativeOffset += durations[i - 1] - transitionDuration;
+        const outputLabel = i === inputPaths.length - 1 ? 'vout' : `xv${i}`;
+        filterParts.push(
+          `[${lastVideoLabel}][v${i}]xfade=transition=${xfadeTransition}:duration=${transitionDuration}:offset=${cumulativeOffset.toFixed(3)}[${outputLabel}];`
+        );
+        lastVideoLabel = outputLabel;
+      }
+
+      // Build chained acrossfade for audio
+      let lastAudioLabel = 'a0';
+      for (let i = 1; i < inputPaths.length; i++) {
+        const outputLabel = i === inputPaths.length - 1 ? 'aout' : `xa${i}`;
+        filterParts.push(`[${lastAudioLabel}][a${i}]acrossfade=d=${transitionDuration}[${outputLabel}];`);
+        lastAudioLabel = outputLabel;
+      }
+
+      // Remove trailing semicolon from last filter
+      const filterComplex = filterParts.join('\n').replace(/;\s*$/, '');
+
+      args = [
+        ...inputs,
+        '-filter_complex',
+        filterComplex,
+        '-map',
+        '[vout]',
+        '-map',
+        '[aout]',
+        '-c:v',
+        'libx264',
+        '-preset',
+        'fast',
+        '-crf',
+        '23',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '192k',
+        '-y',
+        outputPath
+      ];
+    }
+
+    console.log('[VideoMerge] Running FFmpeg with args:', args);
+
+    // 4. Execute FFmpeg
+    await execFileAsync('ffmpeg', args, { timeout: PROCESSING_TIMEOUT });
+
+    // 5. Probe output duration
+    let outputDuration = 0;
+    try {
+      const { stdout: durationOut } = await execFileAsync(
+        'ffprobe',
+        ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', outputPath],
+        { timeout: 30000 }
+      );
+      outputDuration = parseFloat(durationOut.trim()) || 0;
+    } catch {
+      console.warn('[VideoMerge] Could not probe output duration');
+    }
+
+    // 6. Upload to S3
+    if (env.STORAGE_MODE === 's3') {
+      const { url } = await uploadToS3(outputPath, 'video/mp4', `${job.id}.mp4`, pathPrefix, publicUrl);
+      await rm(jobDir, { recursive: true, force: true });
+
+      console.log(`[VideoMerge] Complete: ${url}, duration: ${outputDuration}s`);
+      return {
+        success: true,
+        outputUrl: url,
+        metadata: { duration: outputDuration, videoCount: videos.length }
+      };
+    }
+
+    return {
+      success: true,
+      outputPath,
+      metadata: { duration: outputDuration, videoCount: videos.length }
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[VideoMerge] Error:', errorMessage);
+
+    await rm(jobDir, { recursive: true, force: true }).catch(() => {
+      /* cleanup best-effort */
+    });
+
+    return {
+      success: false,
+      error: `Failed to merge videos: ${errorMessage}`
     };
   }
 }

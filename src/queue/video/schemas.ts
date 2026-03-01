@@ -110,9 +110,32 @@ export const VideoMergeAudioJobDataSchema = z.object({
   publicUrl: z.string().url().optional()
 });
 
+export const VideoMergeJobDataSchema = z.object({
+  videos: z
+    .array(
+      z.object({
+        url: z.string().url(),
+        trim: z
+          .object({
+            start: z.number().min(0).optional(),
+            end: z.number().min(0).optional()
+          })
+          .optional()
+      })
+    )
+    .min(2)
+    .max(50),
+  transition: z.enum(['none', 'crossfade', 'fade']).default('none'),
+  transitionDuration: z.number().min(0.1).max(5).default(0.5),
+  resolution: z.string().default('1080x1920'),
+  pathPrefix: z.string().optional(),
+  publicUrl: z.string().url().optional()
+});
+
 export type VideoToMp4JobData = z.infer<typeof VideoToMp4JobDataSchema>;
 export type VideoExtractAudioJobData = z.infer<typeof VideoExtractAudioJobDataSchema>;
 export type VideoExtractFramesJobData = z.infer<typeof VideoExtractFramesJobDataSchema>;
 export type VideoComposeJobData = z.infer<typeof VideoComposeJobDataSchema>;
 export type VideoOverlayJobData = z.infer<typeof VideoOverlayJobDataSchema>;
 export type VideoMergeAudioJobData = z.infer<typeof VideoMergeAudioJobDataSchema>;
+export type VideoMergeJobData = z.infer<typeof VideoMergeJobDataSchema>;

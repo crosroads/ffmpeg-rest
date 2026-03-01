@@ -2,6 +2,7 @@ import type { OpenAPIHono } from '@hono/zod-openapi';
 import {
   videoProbeRoute,
   videoMergeAudioRoute,
+  videoMergeRoute,
   videoToMp4Route,
   videoToMp4UrlRoute,
   extractAudioRoute,
@@ -123,6 +124,73 @@ export function registerVideoRoutes(app: OpenAPIHono) {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('[VideoMergeAudio] Error:', errorMessage);
+
+      return c.json(
+        {
+          error: 'Processing failed',
+          message: errorMessage
+        },
+        500
+      );
+    }
+  });
+
+  // POST /video/merge — Merge multiple videos into one (S3 only)
+  app.openapi(videoMergeRoute, async (c) => {
+    try {
+      if (env.STORAGE_MODE !== 's3') {
+        return c.json(
+          {
+            error: 'S3 mode required',
+            message: 'Video merge requires STORAGE_MODE=s3 in environment variables'
+          },
+          400
+        );
+      }
+
+      const body = c.req.valid('json');
+
+      console.log('[VideoMerge] Received request:', {
+        videoCount: body.videos.length,
+        transition: body.transition,
+        transitionDuration: body.transitionDuration,
+        resolution: body.resolution,
+        pathPrefix: body.pathPrefix
+      });
+
+      const job = await addJob(JobType.VIDEO_MERGE, {
+        videos: body.videos,
+        transition: body.transition,
+        transitionDuration: body.transitionDuration,
+        resolution: body.resolution,
+        pathPrefix: body.pathPrefix,
+        publicUrl: body.publicUrl
+      });
+
+      console.log(`[VideoMerge] Job queued: ${job.id}`);
+
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
+
+      if (!result.success || !result.outputUrl) {
+        console.error('[VideoMerge] Job failed:', result.error);
+        return c.json(
+          {
+            error: result.error || 'Video merge failed'
+          },
+          400
+        );
+      }
+
+      const duration = (result.metadata?.duration as number) ?? 0;
+      const videoCount = (result.metadata?.videoCount as number) ?? body.videos.length;
+
+      console.log(`[VideoMerge] Job complete: ${result.outputUrl}, duration: ${duration}s, videos: ${videoCount}`);
+
+      return c.json({ url: result.outputUrl, duration, videoCount }, 200);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[VideoMerge] Error:', errorMessage);
 
       return c.json(
         {
