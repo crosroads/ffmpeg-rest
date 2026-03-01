@@ -885,10 +885,10 @@ export async function processVideoMerge(job: Job<VideoMergeJobData>): Promise<Jo
       // Build xfade filter chain
       const filterParts: string[] = [];
 
-      // First: scale all inputs to target resolution
+      // First: scale all inputs to target resolution + force constant frame rate (required by xfade)
       for (let i = 0; i < inputPaths.length; i++) {
         filterParts.push(
-          `[${i}:v]scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2,setpts=PTS-STARTPTS[v${i}];`
+          `[${i}:v]scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2,fps=24,setpts=PTS-STARTPTS[v${i}];`
         );
         filterParts.push(`[${i}:a]aformat=sample_rates=44100:channel_layouts=stereo,asetpts=PTS-STARTPTS[a${i}];`);
       }
